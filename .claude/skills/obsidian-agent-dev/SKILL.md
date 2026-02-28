@@ -1,7 +1,6 @@
 ---
 name: obsidian-agent-dev
 description: Develop Obsidian plugin features with Claude Agent SDK integration
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Obsidian Claude Agent Plugin Development
