@@ -20,6 +20,8 @@
 ## Active Technologies
 - TypeScript (strict mode), ES2018 target + `@anthropic-ai/claude-agent-sdk`, `zod`, `obsidian` (external) (001-obsidian-claude-agent)
 - Obsidian `saveData()`/`loadData()` for settings; in-memory for conversation (001-obsidian-claude-agent)
+- TypeScript (strict mode), ES2018 target + `obsidian` (external), `@anthropic-ai/claude-agent-sdk`, `zod` (002-dual-permission-mode)
+- Obsidian `saveData()`/`loadData()` for settings; in-memory for conversation state (002-dual-permission-mode)
 
 ## Recent Changes
 - 001-obsidian-claude-agent: Added TypeScript (strict mode), ES2018 target + `@anthropic-ai/claude-agent-sdk`, `zod`, `obsidian` (external)
