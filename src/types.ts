@@ -56,17 +56,25 @@ export type PermissionMode = "auto_approve" | "confirm" | "plan_only";
 
 /* ── SDK access control (safe / super mode) ── */
 
+export type ToolPermission = "allow" | "ask" | "deny";
+
+export interface VaultToolPermissions {
+	read_note: ToolPermission;
+	write_note: ToolPermission;
+	modify_note: ToolPermission;
+}
+
 export interface SdkToolToggles {
-	Read: boolean;
-	Write: boolean;
-	Edit: boolean;
-	Bash: boolean;
-	Glob: boolean;
-	Grep: boolean;
-	Skill: boolean;
-	WebFetch: boolean;
-	WebSearch: boolean;
-	NotebookEdit: boolean;
+	Read: ToolPermission;
+	Write: ToolPermission;
+	Edit: ToolPermission;
+	Bash: ToolPermission;
+	Glob: ToolPermission;
+	Grep: ToolPermission;
+	Skill: ToolPermission;
+	WebFetch: ToolPermission;
+	WebSearch: ToolPermission;
+	NotebookEdit: ToolPermission;
 }
 
 export interface ClaudeSettingSources {
@@ -77,6 +85,22 @@ export interface ClaudeSettingSources {
 }
 
 export type ThinkingBudget = "off" | "normal" | "extended";
+
+/* ── Config file layer system ── */
+
+export type ConfigLayer = "ui" | "user" | "project" | "custom";
+export type SettingOverrideMap = Partial<Record<keyof ClaudeAgentSettings, ConfigLayer>>;
+
+export interface ResolvedSettings {
+	merged: ClaudeAgentSettings;
+	overrides: SettingOverrideMap;
+}
+
+export interface ConfigLayerToggles {
+	userEnabled: boolean;
+	projectEnabled: boolean;
+	customEnabled: boolean;
+}
 
 export interface McpServerConfig {
 	id: string;
@@ -98,6 +122,8 @@ export interface ClaudeAgentSettings {
 	userName: string;
 	autoScroll: boolean;
 	autoGenerateTitle: boolean;
+	showDetailedThinking: boolean;
+	showDetailedTools: boolean;
 
 	/* Auth */
 	apiKey: string;
@@ -117,6 +143,7 @@ export interface ClaudeAgentSettings {
 	/* SDK access (safe/super mode) */
 	safeMode: boolean;
 	sdkToolToggles: SdkToolToggles;
+	vaultToolPermissions: VaultToolPermissions;
 	claudeSettingSources: ClaudeSettingSources;
 
 	/* Context */
@@ -130,6 +157,10 @@ export interface ClaudeAgentSettings {
 
 	/* Environment */
 	envVars: Record<string, string>;
+
+	/* Config file layers */
+	agentConfigSubdir: string;
+	configLayerToggles: ConfigLayerToggles;
 
 	/* Advanced */
 	maxMessagesPerConversation: number;

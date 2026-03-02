@@ -196,6 +196,7 @@
 
 .claude-agent-message-row-assistant {
 	align-self: flex-start;
+	width: 100%;
 }
 
 .claude-agent-message-user {
@@ -207,9 +208,9 @@
 
 .claude-agent-message-assistant {
 	align-self: flex-start;
-	background: var(--claude-agent-assistant-bg);
-	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
-	border-bottom-left-radius: 4px;
+	background: none;
+	border: none;
+	border-radius: 0;
 }
 
 .claude-agent-markdown > :first-child {
@@ -339,36 +340,23 @@
 	flex-shrink: 0;
 }
 
-/* ── 9. Input Toolbar ── */
-
-.claude-agent-input-toolbar {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.35rem 0.7rem;
-	border-top: 1px solid var(--background-modifier-border);
-	background: color-mix(in srgb, var(--background-primary-alt) 90%, transparent);
-	flex-shrink: 0;
-	flex-wrap: wrap;
-}
+/* ── 9. Input Toolbar (compact inline in bottom bar) ── */
 
 .claude-agent-toolbar-group {
 	display: flex;
 	align-items: center;
-	gap: 0.25rem;
+	gap: 0.2rem;
 }
 
 .claude-agent-toolbar-label {
 	font-size: 0.72rem;
 	font-weight: 600;
 	color: var(--text-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 
 .claude-agent-toolbar-select {
-	font-size: 0.78rem;
-	padding: 0.15rem 0.35rem;
+	font-size: 0.75rem;
+	padding: 0.12rem 0.3rem;
 	border-radius: var(--claude-agent-radius-xs);
 	border: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
@@ -378,6 +366,11 @@
 
 .claude-agent-toolbar-select:hover {
 	border-color: color-mix(in srgb, var(--claude-agent-accent) 50%, var(--background-modifier-border));
+}
+
+.claude-agent-toolbar-accent {
+	color: var(--claude-agent-accent);
+	font-weight: 600;
 }
 
 /* ── 10. File Context Chips ── */
@@ -432,28 +425,29 @@
 
 /* ── 11. Input Area ── */
 
-.claude-agent-input-wrap {
+.claude-agent-input-container {
 	display: flex;
-	gap: 0.45rem;
-	padding: 0.7rem;
+	flex-direction: column;
+	padding: 0.5rem 0.7rem;
 	border-top: 1px solid var(--background-modifier-border);
 	background: var(--background-primary-alt);
 	flex-shrink: 0;
-	align-items: flex-end;
+	gap: 0.3rem;
 }
 
 .claude-agent-input {
-	flex: 1;
-	resize: vertical;
-	min-height: 52px;
+	width: 100%;
+	resize: none;
+	min-height: 40px;
 	max-height: 180px;
-	padding: 0.55rem;
+	padding: 0.5rem;
 	border-radius: 10px;
 	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
 	background: var(--background-primary);
 	color: var(--text-normal);
 	font-size: 0.88rem;
 	line-height: 1.4;
+	box-sizing: border-box;
 }
 
 .claude-agent-input:focus {
@@ -462,92 +456,101 @@
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--claude-agent-accent) 15%, transparent);
 }
 
-.claude-agent-input-buttons {
-	display: flex;
-	flex-direction: column;
-	gap: 0.3rem;
+.claude-agent-input-hint {
+	font-size: 0.7rem;
+	color: var(--text-faint);
+	padding: 0 0.2rem;
 }
 
-.claude-agent-send,
-.claude-agent-stop {
+.claude-agent-input-bottom-bar {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding-top: 0.15rem;
+}
+
+.claude-agent-bottom-bar-spacer {
+	flex: 1;
+}
+
+.claude-agent-send-icon,
+.claude-agent-stop-icon {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.3rem;
-	padding: 0.4rem 0.75rem;
-	border-radius: var(--claude-agent-radius-sm);
-	font-size: 0.82rem;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border-radius: 50%;
 	cursor: pointer;
+	border: none;
+	flex-shrink: 0;
 }
 
-.claude-agent-stop {
+.claude-agent-send-icon {
+	background: var(--claude-agent-accent);
+	color: #fff;
+}
+
+.claude-agent-send-icon:hover {
+	filter: brightness(1.15);
+}
+
+.claude-agent-stop-icon {
 	background: var(--color-red);
 	color: #fff;
-	border: none;
 }
 
-.claude-agent-stop:hover {
+.claude-agent-stop-icon:hover {
 	filter: brightness(1.1);
 }
 
-/* ── 12. Tool Cards ── */
+/* ── 12. Tool Cards (compact inline) ── */
 
 .claude-agent-tool-card {
-	margin-top: 0.55rem;
-	padding: 0.5rem;
-	border-radius: var(--claude-agent-radius-sm);
-	border: 1px solid var(--background-modifier-border);
-	background: color-mix(in srgb, var(--background-secondary) 75%, transparent);
-	font-size: 0.83rem;
-}
-
-.claude-agent-tool-card.is-pending {
-	border-left: 3px solid #e9a23b;
-}
-
-.claude-agent-tool-card.is-executed {
-	border-left: 3px solid var(--claude-agent-accent);
-}
-
-.claude-agent-tool-card.is-rejected {
-	border-left: 3px solid var(--color-red);
-}
-
-.claude-agent-tool-card-header {
 	display: flex;
-	justify-content: space-between;
-	font-weight: 600;
-	gap: 0.5rem;
+	align-items: center;
+	gap: 0.35rem;
+	margin-top: 0.25rem;
+	padding: 0.15rem 0;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	border: none;
+	background: none;
+}
+
+.claude-agent-tool-icon {
+	display: flex;
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: var(--text-faint);
+}
+
+.claude-agent-tool-name {
+	font-family: var(--font-monospace);
+	font-size: 0.78rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .claude-agent-tool-status {
-	font-size: 0.72rem;
+	flex-shrink: 0;
+	font-size: 0.78rem;
 	font-weight: 600;
-	padding: 0.1rem 0.35rem;
-	border-radius: 4px;
-	background: var(--claude-agent-accent-soft);
 }
 
-.claude-agent-tool-path {
-	font-family: var(--font-monospace);
-	margin-top: 0.25rem;
-	color: var(--text-muted);
-	font-size: 0.78rem;
+.claude-agent-tool-status.is-executed {
+	color: var(--claude-agent-accent);
 }
 
-.claude-agent-tool-preview {
-	margin-top: 0.35rem;
-	padding: 0.4rem;
-	background: var(--background-primary);
-	border-radius: var(--claude-agent-radius-xs);
-	max-height: 120px;
-	overflow: auto;
-	font-size: 0.78rem;
+.claude-agent-tool-status.is-pending {
+	color: #e9a23b;
 }
 
-.claude-agent-tool-result {
-	margin-top: 0.25rem;
-	color: var(--text-muted);
-	font-size: 0.78rem;
+.claude-agent-tool-status.is-rejected {
+	color: var(--color-red);
 }
 
 .claude-agent-tool-actions {
@@ -624,51 +627,41 @@
 	transform: translateX(-50%) translateY(0);
 }
 
-/* ── 14. Thinking Block ── */
+/* ── 14. Thinking Block (inline) ── */
 
 .claude-agent-thinking-block {
-	margin: 0.4rem 0;
-	border-radius: var(--claude-agent-radius-sm);
-	border: 1px solid color-mix(in srgb, var(--claude-agent-accent) 25%, var(--background-modifier-border));
-	background: color-mix(in srgb, var(--claude-agent-accent) 5%, var(--background-primary));
+	margin: 0.2rem 0;
 	overflow: hidden;
 }
 
 .claude-agent-thinking-header {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 0.35rem;
-	padding: 0.35rem 0.55rem;
+	gap: 0.25rem;
 	cursor: pointer;
 	user-select: none;
-	transition: background 100ms;
+	padding: 0.1rem 0;
 }
 
 .claude-agent-thinking-header:hover {
-	background: var(--claude-agent-accent-soft);
-}
-
-.claude-agent-thinking-toggle {
-	display: flex;
-	width: 16px;
-	height: 16px;
-	flex-shrink: 0;
+	opacity: 0.8;
 }
 
 .claude-agent-thinking-label {
 	font-size: 0.78rem;
 	font-weight: 600;
-	color: var(--claude-agent-accent);
+	color: #e9a23b;
 }
 
 .claude-agent-thinking-content {
-	padding: 0.55rem;
-	font-size: 0.8rem;
+	padding: 0.45rem 0.55rem;
+	font-size: 0.78rem;
 	color: var(--text-muted);
 	white-space: pre-wrap;
 	max-height: 200px;
 	overflow-y: auto;
-	border-top: 1px solid color-mix(in srgb, var(--claude-agent-accent) 15%, transparent);
+	margin-top: 0.2rem;
+	border-left: 2px solid color-mix(in srgb, #e9a23b 30%, transparent);
 }
 
 /* ── 15. Status Panel ── */
@@ -1096,6 +1089,11 @@
 	100% { opacity: 0.25; }
 }
 
+@keyframes claude-agent-bounce {
+	0%, 80%, 100% { transform: translateY(0); }
+	40% { transform: translateY(-6px); }
+}
+
 /* ── 21. Responsive ── */
 
 @media (max-width: 680px) {
@@ -1113,12 +1111,8 @@
 		pointer-events: auto;
 	}
 
-	.claude-agent-input-wrap {
-		flex-direction: column;
-	}
-
-	.claude-agent-input-buttons {
-		align-self: flex-end;
+	.claude-agent-input-bottom-bar {
+		flex-wrap: wrap;
 	}
 
 	.claude-agent-sidebar.is-visible {
@@ -1127,10 +1121,6 @@
 		width: var(--claude-agent-sidebar-width);
 		height: 100%;
 		box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
-	}
-
-	.claude-agent-input-toolbar {
-		gap: 0.3rem;
 	}
 
 	.claude-agent-toolbar-label {
@@ -1148,6 +1138,61 @@
 }
 
 /* ── Collapsible settings sections ── */
+
+/* ── Settings Tab Bar ── */
+
+.claude-agent-settings-wrapper {
+	display: flex;
+	flex-direction: column;
+}
+
+.claude-agent-settings-tab-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding: 0.5rem 0;
+	margin-bottom: 0.75rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-settings-tab {
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid transparent;
+	background: none;
+	font-size: 0.82rem;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: background 100ms ease, color 100ms ease;
+}
+
+.claude-agent-settings-tab:hover {
+	background: var(--claude-agent-accent-soft);
+	color: var(--text-normal);
+}
+
+.claude-agent-settings-tab.is-active {
+	border-color: var(--claude-agent-accent);
+	color: var(--claude-agent-accent);
+	font-weight: 600;
+}
+
+.claude-agent-settings-tab.is-disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.claude-agent-settings-content {
+	flex: 1;
+}
+
+.claude-agent-settings-placeholder {
+	padding: 2rem 1rem;
+	text-align: center;
+	color: var(--text-faint);
+	font-size: 0.88rem;
+}
 
 .claude-agent-collapsible {
 	margin: 0.5em 0;
@@ -1171,4 +1216,678 @@
 
 .claude-agent-collapsible > div {
 	padding: 0.25em 0.75em;
+}
+
+/* ── Tool Permission UI ── */
+
+.claude-agent-tool-perm-list {
+	display: flex;
+	flex-direction: column;
+	margin: 0.5rem 0;
+}
+
+.claude-agent-tool-perm-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-tool-perm-row:last-child {
+	border-bottom: none;
+}
+
+.claude-agent-tool-perm-name {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+	font-size: 0.88rem;
+	font-weight: 500;
+}
+
+.claude-agent-tool-perm-desc {
+	display: block;
+	font-size: 0.75rem;
+	font-weight: 400;
+	color: var(--text-muted);
+}
+
+.claude-agent-tool-perm-actions {
+	display: flex;
+	gap: 0.35rem;
+	flex-shrink: 0;
+}
+
+.claude-agent-tool-perm-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	cursor: pointer;
+	font-size: 0.82rem;
+	color: var(--text-muted);
+	transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
+}
+
+.claude-agent-tool-perm-btn:hover {
+	background: var(--background-secondary);
+	border-color: var(--text-muted);
+}
+
+.claude-agent-tool-perm-btn.is-allow {
+	background: color-mix(in srgb, #2a9d8f 20%, var(--background-primary));
+	border-color: #2a9d8f;
+	color: #2a9d8f;
+	font-weight: 700;
+}
+
+.claude-agent-tool-perm-btn.is-ask {
+	background: color-mix(in srgb, #e9a23b 20%, var(--background-primary));
+	border-color: #e9a23b;
+	color: #e9a23b;
+	font-weight: 700;
+}
+
+.claude-agent-tool-perm-btn.is-deny {
+	background: color-mix(in srgb, var(--text-faint) 15%, var(--background-primary));
+	border-color: var(--text-faint);
+	color: var(--text-faint);
+	font-weight: 700;
+}
+
+/* ── Sub-tab bar (SDK Tools) ── */
+
+.claude-agent-settings-sub-tab-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.2rem;
+	padding: 0.35rem 0;
+	margin-bottom: 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-settings-sub-tab {
+	padding: 0.25rem 0.6rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid transparent;
+	background: none;
+	font-size: 0.78rem;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: background 100ms ease, color 100ms ease;
+}
+
+.claude-agent-settings-sub-tab:hover {
+	background: var(--claude-agent-accent-soft);
+	color: var(--text-normal);
+}
+
+.claude-agent-settings-sub-tab.is-active {
+	border-color: var(--claude-agent-accent);
+	color: var(--claude-agent-accent);
+	font-weight: 600;
+}
+
+/* ── Config file layer styles ── */
+
+.claude-agent-config-status {
+	font-size: 0.75rem;
+	font-weight: 500;
+}
+
+.claude-agent-config-status.is-found {
+	color: var(--claude-agent-accent);
+}
+
+.claude-agent-config-status.is-missing {
+	color: var(--text-faint);
+}
+
+.claude-agent-config-status.is-readonly {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.claude-agent-config-path {
+	display: block;
+	margin: 0.3rem 0;
+	padding: 0.25rem 0.5rem;
+	background: var(--background-secondary);
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.8rem;
+	word-break: break-all;
+}
+
+.claude-agent-override-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.8rem;
+	margin-top: 0.5rem;
+}
+
+.claude-agent-override-table th,
+.claude-agent-override-table td {
+	padding: 0.3rem 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+	text-align: left;
+}
+
+.claude-agent-override-table th {
+	font-weight: 600;
+	color: var(--text-muted);
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.claude-agent-override-field {
+	font-family: var(--font-monospace);
+	font-size: 0.78rem;
+}
+
+.claude-agent-override-value {
+	color: var(--text-muted);
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-override-badge {
+	display: inline-block;
+	padding: 0.1rem 0.4rem;
+	border-radius: 4px;
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.claude-agent-override-badge.is-user {
+	background: color-mix(in srgb, #6c8ebf 20%, var(--background-primary));
+	color: #6c8ebf;
+}
+
+.claude-agent-override-badge.is-project {
+	background: color-mix(in srgb, #e9a23b 20%, var(--background-primary));
+	color: #e9a23b;
+}
+
+.claude-agent-override-badge.is-custom {
+	background: color-mix(in srgb, var(--claude-agent-accent) 20%, var(--background-primary));
+	color: var(--claude-agent-accent);
+}
+
+/* ── Config layer details ── */
+
+.claude-agent-layer-details {
+	margin-left: 0.5rem;
+}
+
+.claude-agent-layer-inner {
+	padding: 0.4rem 0.5rem;
+}
+
+.claude-agent-config-empty {
+	color: var(--text-faint);
+	font-size: 0.8rem;
+	font-style: italic;
+}
+
+.claude-agent-config-kv-row {
+	display: flex;
+	align-items: baseline;
+	gap: 0.15rem;
+	padding: 0.12rem 0;
+	font-size: 0.8rem;
+	font-family: var(--font-monospace);
+	line-height: 1.4;
+}
+
+.claude-agent-config-key {
+	color: #6c8ebf;
+	font-weight: 600;
+	cursor: default;
+}
+
+.claude-agent-config-sep {
+	color: var(--text-faint);
+}
+
+.claude-agent-config-value {
+	color: var(--text-normal);
+	word-break: break-all;
+}
+
+.claude-agent-config-type-hint {
+	color: var(--text-faint);
+	font-size: 0.72rem;
+	font-style: italic;
+}
+
+.claude-agent-config-del-btn {
+	margin-left: auto;
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: none;
+	background: none;
+	color: var(--text-faint);
+	font-size: 0.78rem;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 100ms;
+}
+
+.claude-agent-config-kv-row:hover .claude-agent-config-del-btn {
+	opacity: 0.6;
+}
+
+.claude-agent-config-del-btn:hover {
+	opacity: 1 !important;
+	color: var(--color-red);
+	background: color-mix(in srgb, var(--color-red) 10%, transparent);
+}
+
+/* ── Add form ── */
+
+.claude-agent-config-add-row {
+	margin-top: 0.5rem;
+	padding-top: 0.4rem;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-config-add-form {
+	display: flex;
+	gap: 0.3rem;
+	align-items: flex-start;
+}
+
+.claude-agent-config-add-key-wrapper {
+	position: relative;
+	flex: 1;
+}
+
+.claude-agent-config-add-input {
+	width: 100%;
+	padding: 0.25rem 0.4rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	font-size: 0.8rem;
+	font-family: var(--font-monospace);
+	box-sizing: border-box;
+}
+
+.claude-agent-config-add-value {
+	flex: 1;
+}
+
+.claude-agent-config-add-btn {
+	padding: 0.25rem 0.6rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--claude-agent-accent);
+	background: var(--claude-agent-accent);
+	color: #fff;
+	font-size: 0.78rem;
+	font-weight: 600;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.claude-agent-config-add-btn:hover {
+	filter: brightness(1.1);
+}
+
+/* ── Autocomplete dropdown ── */
+
+.claude-agent-config-autocomplete {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	max-height: 200px;
+	overflow-y: auto;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--claude-agent-radius-xs);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.claude-agent-config-autocomplete-item {
+	display: flex;
+	align-items: baseline;
+	gap: 0.3rem;
+	padding: 0.3rem 0.5rem;
+	font-size: 0.78rem;
+	font-family: var(--font-monospace);
+	cursor: pointer;
+}
+
+.claude-agent-config-autocomplete-item:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+/* ── View toggle (Table / Source) ── */
+
+.claude-agent-config-view-toggle {
+	display: flex;
+	gap: 0;
+	margin-bottom: 0.5rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--claude-agent-radius-xs);
+	overflow: hidden;
+	width: fit-content;
+}
+
+.claude-agent-config-view-toggle button {
+	padding: 0.2rem 0.7rem;
+	border: none;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	font-size: 0.75rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background 120ms, color 120ms;
+}
+
+.claude-agent-config-view-toggle button:not(:last-child) {
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-config-view-toggle button.is-active {
+	background: var(--claude-agent-accent);
+	color: #fff;
+}
+
+.claude-agent-config-view-toggle button:hover:not(.is-active) {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-config-source-view pre {
+	margin: 0;
+	padding: 0.6rem 0.75rem;
+	background: #171a21;
+	color: #d7dde8;
+	border-radius: var(--claude-agent-radius-sm);
+	font-size: 0.75rem;
+	line-height: 1.5;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.claude-agent-config-source-view code {
+	font-family: var(--font-monospace);
+}
+
+/* ── Merged JSON view ── */
+
+.claude-agent-merged-view {
+	padding: 0.3rem;
+}
+
+.claude-agent-merged-json {
+	margin: 0;
+	padding: 0.6rem 0.75rem;
+	background: #171a21;
+	color: #d7dde8;
+	border-radius: var(--claude-agent-radius-sm);
+	font-size: 0.75rem;
+	line-height: 1.5;
+	max-height: 400px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+/* ── 22. Typing Indicator ── */
+
+.claude-agent-typing-indicator {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0.3rem 0;
+}
+
+.claude-agent-typing-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--text-muted);
+	animation: claude-agent-bounce 1.2s ease-in-out infinite;
+}
+
+.claude-agent-typing-dot:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.claude-agent-typing-dot:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
+/* ── 23. Tool Card Detail Mode ── */
+
+.claude-agent-tool-card-expandable {
+	cursor: pointer;
+}
+
+.claude-agent-tool-card-expandable:hover {
+	opacity: 0.8;
+}
+
+.claude-agent-tool-detail {
+	margin-left: 1.2rem;
+	margin-bottom: 0.3rem;
+}
+
+.claude-agent-tool-detail-section {
+	margin: 0.25rem 0;
+	font-size: 0.78rem;
+	color: var(--text-muted);
+}
+
+.claude-agent-tool-detail-section strong {
+	display: block;
+	margin-bottom: 0.15rem;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--text-faint);
+}
+
+.claude-agent-tool-detail-pre {
+	margin: 0.15rem 0 0;
+	padding: 0.4rem 0.55rem;
+	background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.75rem;
+	max-height: 150px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+/* ── 24. Tool Approval Card ── */
+
+.claude-agent-approval-card {
+	margin: 0.5rem 0;
+	padding: 0.65rem 0.75rem;
+	border-radius: var(--claude-agent-radius);
+	border: 1px solid color-mix(in srgb, #e9a23b 40%, var(--background-modifier-border));
+	background: color-mix(in srgb, #e9a23b 5%, var(--background-primary));
+	animation: claude-agent-rise 0.2s ease-out;
+}
+
+.claude-agent-approval-header {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin-bottom: 0.35rem;
+}
+
+.claude-agent-approval-icon {
+	display: flex;
+	width: 18px;
+	height: 18px;
+	color: #e9a23b;
+}
+
+.claude-agent-approval-tool-name {
+	font-weight: 600;
+	font-size: 0.88rem;
+	font-family: var(--font-monospace);
+}
+
+.claude-agent-approval-path {
+	font-size: 0.78rem;
+	font-family: var(--font-monospace);
+	color: var(--text-muted);
+	margin-bottom: 0.35rem;
+	padding: 0.15rem 0.35rem;
+	background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+	border-radius: var(--claude-agent-radius-xs);
+	word-break: break-all;
+}
+
+.claude-agent-approval-params {
+	margin: 0.35rem 0;
+}
+
+.claude-agent-approval-param-row {
+	font-size: 0.8rem;
+	padding: 0.15rem 0;
+	line-height: 1.4;
+}
+
+.claude-agent-approval-param-key {
+	font-weight: 600;
+	font-family: var(--font-monospace);
+	font-size: 0.78rem;
+	color: var(--text-muted);
+}
+
+.claude-agent-approval-param-value {
+	font-size: 0.78rem;
+	word-break: break-all;
+}
+
+.claude-agent-approval-param-expandable {
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-style: dotted;
+}
+
+.claude-agent-approval-param-full pre {
+	margin: 0.15rem 0 0;
+	padding: 0.35rem 0.5rem;
+	background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.75rem;
+	max-height: 200px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.claude-agent-approval-command {
+	display: block;
+	margin-top: 0.15rem;
+	padding: 0.35rem 0.55rem;
+	background: #171a21;
+	color: #e7ebf4;
+	border-radius: var(--claude-agent-radius-xs);
+	font-family: var(--font-monospace);
+	font-size: 0.78rem;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.claude-agent-approval-diff {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0;
+	margin: 0.3rem 0;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.claude-agent-approval-diff-label {
+	padding: 0.15rem 0.4rem;
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: var(--text-muted);
+	background: var(--background-primary-alt);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-approval-diff-old {
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-approval-diff-old pre {
+	margin: 0;
+	padding: 0.35rem;
+	font-size: 0.75rem;
+	white-space: pre-wrap;
+	word-break: break-all;
+	max-height: 150px;
+	overflow: auto;
+	background: color-mix(in srgb, var(--color-red) 6%, var(--background-primary));
+}
+
+.claude-agent-approval-diff-new pre {
+	margin: 0;
+	padding: 0.35rem;
+	font-size: 0.75rem;
+	white-space: pre-wrap;
+	word-break: break-all;
+	max-height: 150px;
+	overflow: auto;
+	background: color-mix(in srgb, var(--claude-agent-accent) 6%, var(--background-primary));
+}
+
+.claude-agent-approval-actions {
+	display: flex;
+	gap: 0.5rem;
+	margin-top: 0.5rem;
+}
+
+.claude-agent-approval-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.35rem 0.75rem;
+	border-radius: 100px;
+	font-size: 0.82rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: filter 100ms ease;
+}
+
+.claude-agent-approval-btn:hover {
+	filter: brightness(1.1);
+}
+
+.claude-agent-approval-btn-approve {
+	background: var(--claude-agent-accent);
+	color: #fff;
+	border: none;
+}
+
+.claude-agent-approval-btn-reject {
+	background: none;
+	color: var(--color-red);
+	border: 1px solid var(--color-red);
 }

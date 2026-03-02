@@ -6,35 +6,41 @@ export interface InputAreaConfig {
 }
 
 export class InputArea {
-	private containerEl: HTMLElement;
+	readonly containerEl: HTMLElement;
 	private textareaEl: HTMLTextAreaElement;
 	private sendButtonEl: HTMLButtonElement;
 	private stopButtonEl: HTMLButtonElement;
+	private hintEl: HTMLElement;
+	readonly bottomBarEl: HTMLElement;
 	private _isStreaming = false;
 
 	constructor(parentEl: HTMLElement, private readonly config: InputAreaConfig) {
-		this.containerEl = parentEl.createDiv({ cls: "claude-agent-input-wrap" });
+		this.containerEl = parentEl.createDiv({ cls: "claude-agent-input-container" });
 
 		this.textareaEl = this.containerEl.createEl("textarea", {
 			cls: "claude-agent-input",
-			attr: { placeholder: "Ask about your current note...", rows: "3" },
+			attr: { placeholder: "Ask Claude anything...", rows: "2" },
 		});
 
-		const btnGroup = this.containerEl.createDiv({ cls: "claude-agent-input-buttons" });
+		this.hintEl = this.containerEl.createDiv({ cls: "claude-agent-input-hint" });
+		this.hintEl.setText("Enter to send, Shift+Enter for newline");
 
-		this.sendButtonEl = btnGroup.createEl("button", {
-			cls: "mod-cta claude-agent-send",
-			attr: { "aria-label": "Send message" },
+		this.bottomBarEl = this.containerEl.createDiv({ cls: "claude-agent-input-bottom-bar" });
+
+		/* Spacer pushes send/stop to the right */
+		this.bottomBarEl.createDiv({ cls: "claude-agent-bottom-bar-spacer" });
+
+		this.sendButtonEl = this.bottomBarEl.createEl("button", {
+			cls: "claude-agent-send-icon",
+			attr: { "aria-label": "Send message", type: "button" },
 		});
-		setIcon(this.sendButtonEl, "send");
-		this.sendButtonEl.createSpan({ text: "Send" });
+		setIcon(this.sendButtonEl, "arrow-up");
 
-		this.stopButtonEl = btnGroup.createEl("button", {
-			cls: "claude-agent-stop",
-			attr: { "aria-label": "Stop generation" },
+		this.stopButtonEl = this.bottomBarEl.createEl("button", {
+			cls: "claude-agent-stop-icon",
+			attr: { "aria-label": "Stop generation", type: "button" },
 		});
 		setIcon(this.stopButtonEl, "square");
-		this.stopButtonEl.createSpan({ text: "Stop" });
 		this.stopButtonEl.style.display = "none";
 
 		this.sendButtonEl.addEventListener("click", () => this.handleSend());
@@ -46,6 +52,8 @@ export class InputArea {
 				this.handleSend();
 			}
 		});
+
+		this.textareaEl.addEventListener("input", () => this.autoResize());
 	}
 
 	private handleSend(): void {

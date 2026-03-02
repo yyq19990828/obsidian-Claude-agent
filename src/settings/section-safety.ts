@@ -1,24 +1,26 @@
 import { Setting } from "obsidian";
 import type ClaudeAgentPlugin from "../main";
-import type { PermissionMode, SdkToolToggles } from "../types";
+import type { PermissionMode } from "../types";
 import { requestSuperModeConfirmation } from "../ui/modals/super-mode-confirm-modal";
 
 export class SectionSafety {
 	private plugin: ClaudeAgentPlugin;
-	private containerEl: HTMLElement;
+	private wrapperEl: HTMLElement;
+	private onSafeModeChanged?: () => void;
 
-	constructor(containerEl: HTMLElement, plugin: ClaudeAgentPlugin) {
+	constructor(containerEl: HTMLElement, plugin: ClaudeAgentPlugin, onSafeModeChanged?: () => void) {
 		this.plugin = plugin;
-		this.containerEl = containerEl;
+		this.onSafeModeChanged = onSafeModeChanged;
+		this.wrapperEl = containerEl.createDiv();
 		this.render();
 	}
 
 	private render(): void {
-		const { containerEl, plugin } = this;
-		containerEl.empty();
-		containerEl.createEl("h2", { text: "Safety" });
+		const { wrapperEl, plugin } = this;
+		wrapperEl.empty();
+		wrapperEl.createEl("h2", { text: "Safety" });
 
-		new Setting(containerEl)
+		new Setting(wrapperEl)
 			.setName("Permission mode")
 			.setDesc("Controls how tool calls are approved.")
 			.addDropdown((dropdown) => {
@@ -33,7 +35,7 @@ export class SectionSafety {
 					});
 			});
 
-		new Setting(containerEl)
+		new Setting(wrapperEl)
 			.setName("Confirm file operations")
 			.setDesc("Require approval before write or modify tool calls run.")
 			.addToggle((toggle) => {
@@ -45,9 +47,9 @@ export class SectionSafety {
 
 		/* ── Safe / Super mode ── */
 
-		containerEl.createEl("h3", { text: "SDK access mode" });
+		wrapperEl.createEl("h3", { text: "SDK access mode" });
 
-		new Setting(containerEl)
+		new Setting(wrapperEl)
 			.setName("Safe mode")
 			.setDesc("When enabled, only vault-scoped MCP tools are available. Disable to access SDK built-in tools and .claude/ configuration.")
 			.addToggle((toggle) => {
@@ -64,19 +66,15 @@ export class SectionSafety {
 					}
 					await plugin.saveSettings();
 					this.render();
+					this.onSafeModeChanged?.();
 				});
 			});
 
-		if (!plugin.settings.safeMode) {
-			this.buildSdkToolToggles(containerEl);
-			this.buildClaudeSettingSources(containerEl);
-		}
-
 		/* ── Restrictions ── */
 
-		containerEl.createEl("h3", { text: "Restrictions" });
+		wrapperEl.createEl("h3", { text: "Restrictions" });
 
-		new Setting(containerEl)
+		new Setting(wrapperEl)
 			.setName("Command blacklist")
 			.setDesc("Comma-separated list of commands the agent should never execute.")
 			.addTextArea((text) => {
@@ -93,7 +91,7 @@ export class SectionSafety {
 				text.inputEl.rows = 3;
 			});
 
-		new Setting(containerEl)
+		new Setting(wrapperEl)
 			.setName("Allowed paths")
 			.setDesc("Restrict file operations to these vault paths. One per line. Leave empty to allow all.")
 			.addTextArea((text) => {
@@ -111,70 +109,4 @@ export class SectionSafety {
 			});
 	}
 
-	private buildSdkToolToggles(container: HTMLElement): void {
-		const detail = container.createEl("details", { cls: "claude-agent-collapsible" });
-		detail.createEl("summary", { text: "SDK built-in tools" });
-		const content = detail.createDiv();
-
-		const toolNames: (keyof SdkToolToggles)[] = [
-			"Read", "Write", "Edit", "Bash", "Glob",
-			"Grep", "Skill", "WebFetch", "WebSearch", "NotebookEdit",
-		];
-		for (const toolName of toolNames) {
-			new Setting(content)
-				.setName(toolName)
-				.addToggle((toggle) => {
-					toggle.setValue(this.plugin.settings.sdkToolToggles[toolName]).onChange(async (value) => {
-						this.plugin.settings.sdkToolToggles[toolName] = value;
-						await this.plugin.saveSettings();
-					});
-				});
-		}
-	}
-
-	private buildClaudeSettingSources(container: HTMLElement): void {
-		const detail = container.createEl("details", { cls: "claude-agent-collapsible" });
-		detail.createEl("summary", { text: ".claude configuration" });
-		const content = detail.createDiv();
-
-		new Setting(content)
-			.setName("Project settings")
-			.setDesc("Load .claude/settings.json and .claude/settings.local.json")
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.claudeSettingSources.projectSettings).onChange(async (value) => {
-					this.plugin.settings.claudeSettingSources.projectSettings = value;
-					await this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(content)
-			.setName("Project memory")
-			.setDesc("Allow .claude/memory/ for persistent project memory")
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.claudeSettingSources.projectMemory).onChange(async (value) => {
-					this.plugin.settings.claudeSettingSources.projectMemory = value;
-					await this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(content)
-			.setName("User settings")
-			.setDesc("Load ~/.claude/settings.json")
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.claudeSettingSources.userSettings).onChange(async (value) => {
-					this.plugin.settings.claudeSettingSources.userSettings = value;
-					await this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(content)
-			.setName("User memory")
-			.setDesc("Allow ~/.claude/memory/ for persistent user memory")
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.claudeSettingSources.userMemory).onChange(async (value) => {
-					this.plugin.settings.claudeSettingSources.userMemory = value;
-					await this.plugin.saveSettings();
-				});
-			});
-	}
 }

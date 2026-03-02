@@ -3,6 +3,9 @@ import type ClaudeAgentPlugin from "../main";
 import type { ClaudeAgentSettings } from "../types";
 
 export class SectionAuth {
+	private apiKeySetting!: Setting;
+	private cliPathSetting!: Setting;
+
 	constructor(containerEl: HTMLElement, plugin: ClaudeAgentPlugin) {
 		containerEl.createEl("h2", { text: "Authentication" });
 
@@ -17,13 +20,11 @@ export class SectionAuth {
 					.onChange(async (value) => {
 						plugin.settings.authMethod = value as ClaudeAgentSettings["authMethod"];
 						await plugin.saveSettings();
-						// Re-render to update disabled states
-						const settingTab = (plugin.app as unknown as Record<string, unknown>).setting as { activeTab?: { display(): void } } | undefined;
-						if (settingTab?.activeTab) settingTab.activeTab.display();
+						this.updateDisabledStates(plugin);
 					});
 			});
 
-		new Setting(containerEl)
+		this.apiKeySetting = new Setting(containerEl)
 			.setName("API key")
 			.setDesc("Used when authentication method is set to API key.")
 			.addText((text) => {
@@ -35,10 +36,9 @@ export class SectionAuth {
 						await plugin.saveSettings();
 					});
 				text.inputEl.type = "password";
-				text.inputEl.disabled = plugin.settings.authMethod !== "api_key";
 			});
 
-		new Setting(containerEl)
+		this.cliPathSetting = new Setting(containerEl)
 			.setName("Claude CLI path")
 			.setDesc("Path to the claude executable. Leave empty for auto-detection.")
 			.addText((text) => {
@@ -49,7 +49,15 @@ export class SectionAuth {
 						plugin.settings.claudeCliPath = value.trim();
 						await plugin.saveSettings();
 					});
-				text.inputEl.disabled = plugin.settings.authMethod !== "claude_code";
 			});
+
+		this.updateDisabledStates(plugin);
+	}
+
+	private updateDisabledStates(plugin: ClaudeAgentPlugin): void {
+		const apiKeyInput = this.apiKeySetting.controlEl.querySelector("input");
+		const cliPathInput = this.cliPathSetting.controlEl.querySelector("input");
+		if (apiKeyInput) apiKeyInput.disabled = plugin.settings.authMethod !== "api_key";
+		if (cliPathInput) cliPathInput.disabled = plugin.settings.authMethod !== "claude_code";
 	}
 }

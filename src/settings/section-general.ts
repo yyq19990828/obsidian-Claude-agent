@@ -37,5 +37,25 @@ export class SectionGeneral {
 					await plugin.saveSettings();
 				});
 			});
+
+		new Setting(containerEl)
+			.setName("Detailed thinking")
+			.setDesc("Show thinking content expanded in real-time. When off, only the label is shown.")
+			.addToggle((toggle) => {
+				toggle.setValue(plugin.settings.showDetailedThinking).onChange(async (value) => {
+					plugin.settings.showDetailedThinking = value;
+					await plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Detailed tool calls")
+			.setDesc("Allow expanding tool calls to see input parameters and results.")
+			.addToggle((toggle) => {
+				toggle.setValue(plugin.settings.showDetailedTools).onChange(async (value) => {
+					plugin.settings.showDetailedTools = value;
+					await plugin.saveSettings();
+				});
+			});
 	}
 }

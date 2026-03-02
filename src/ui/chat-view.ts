@@ -1,5 +1,5 @@
-import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
-import type { ToolCall, ConversationTab } from "../types";
+import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import type { ToolCall } from "../types";
 import type { EventBus } from "../state/event-bus";
 import type { TabManager } from "../state/tab-manager";
 import type { ConversationStore } from "../state/conversation-store";
@@ -8,7 +8,6 @@ import { TabBar } from "./components/tab-bar";
 import { MessageList } from "./components/message-list";
 import { InputToolbar } from "./components/input-toolbar";
 import { InputArea } from "./components/input-area";
-import { StatusPanel } from "./components/status-panel";
 import { FileContextChips } from "./components/file-context-chips";
 import { ConversationSidebar } from "./sidebar/conversation-sidebar";
 
@@ -25,7 +24,7 @@ export interface ChatViewDeps {
 	onCloseTab: (tabId: string) => void;
 	onSwitchTab: (tabId: string) => void;
 	getMaxContextSize: () => number;
-	getSettings: () => { model: string; thinkingBudget: string; permissionMode: string };
+	getSettings: () => { model: string; thinkingBudget: string; permissionMode: string; showDetailedThinking: boolean; showDetailedTools: boolean };
 	onModelChange: (model: string) => void;
 	onThinkingChange: (budget: string) => void;
 	onPermissionChange: (mode: string) => void;
@@ -38,12 +37,9 @@ export class ChatView extends ItemView {
 	private messageList: MessageList | null = null;
 	private inputToolbar: InputToolbar | null = null;
 	private inputArea: InputArea | null = null;
-	private statusPanel: StatusPanel | null = null;
 	private fileChips: FileContextChips | null = null;
 	private sidebar: ConversationSidebar | null = null;
-	private loadingEl: HTMLElement | null = null;
 	private queueEl: HTMLElement | null = null;
-	private contextEl: HTMLElement | null = null;
 	private mainContentEl: HTMLElement | null = null;
 	private sidebarVisible = false;
 
@@ -83,10 +79,6 @@ export class ChatView extends ItemView {
 
 		/* Header */
 		this.headerBar = new HeaderBar(this.mainContentEl, {
-			onClear: () => {
-				const tabId = this.deps.tabManager.getActiveTabId();
-				if (tabId) this.deps.onClear(tabId);
-			},
 			onNewTab: () => this.deps.onNewTab(),
 			onToggleSidebar: () => this.toggleSidebar(),
 		}, this.deps.eventBus);
@@ -109,36 +101,17 @@ export class ChatView extends ItemView {
 				const tabId = this.deps.tabManager.getActiveTabId();
 				if (tabId) this.deps.onSend(userText, tabId);
 			},
+			getSettings: () => {
+				const s = this.deps.getSettings();
+				return { showDetailedThinking: s.showDetailedThinking, showDetailedTools: s.showDetailedTools };
+			},
 		});
-
-		/* Loading indicator */
-		this.loadingEl = this.mainContentEl.createDiv({ cls: "claude-agent-loading" });
-		this.loadingEl.createSpan({ text: "Thinking..." });
-		this.loadingEl.createSpan({ cls: "claude-agent-loading-dots", text: "..." });
-		this.loadingEl.hide();
 
 		/* Queue indicator */
 		this.queueEl = this.mainContentEl.createDiv({ cls: "claude-agent-queue-indicator" });
 		this.queueEl.hide();
 
-		/* Status panel */
-		this.statusPanel = new StatusPanel(this.mainContentEl, this.deps.eventBus);
-
-		/* Context indicator */
-		this.contextEl = this.mainContentEl.createDiv({ cls: "claude-agent-context-indicator" });
-
-		/* File context chips */
-		this.fileChips = new FileContextChips(this.mainContentEl, this.deps.eventBus);
-
-		/* Input toolbar */
-		this.inputToolbar = new InputToolbar(this.mainContentEl, {
-			getSettings: this.deps.getSettings,
-			onModelChange: this.deps.onModelChange,
-			onThinkingChange: this.deps.onThinkingChange,
-			onPermissionChange: this.deps.onPermissionChange,
-		});
-
-		/* Input area */
+		/* ── Input container (chips + textarea + hint + bottom bar) ── */
 		this.inputArea = new InputArea(this.mainContentEl, {
 			onSend: (text) => {
 				const tabId = this.deps.tabManager.getActiveTabId();
@@ -150,23 +123,39 @@ export class ChatView extends ItemView {
 			},
 		});
 
+		/* File context chips — inject into input container, before textarea */
+		this.fileChips = new FileContextChips(this.inputArea.containerEl, this.deps.eventBus);
+		/* Move chips to be the first child of container */
+		const chipsEl = this.inputArea.containerEl.lastElementChild;
+		if (chipsEl) {
+			this.inputArea.containerEl.insertBefore(chipsEl, this.inputArea.containerEl.firstChild);
+		}
+
+		/* Input toolbar — inject into bottom bar (before spacer) */
+		this.inputToolbar = new InputToolbar(this.inputArea.bottomBarEl, {
+			getSettings: this.deps.getSettings,
+			onModelChange: this.deps.onModelChange,
+			onThinkingChange: this.deps.onThinkingChange,
+			onPermissionChange: this.deps.onPermissionChange,
+		});
+		/* Move toolbar groups before the spacer */
+		const spacer = this.inputArea.bottomBarEl.querySelector(".claude-agent-bottom-bar-spacer");
+		if (spacer) {
+			const groups = this.inputArea.bottomBarEl.querySelectorAll(".claude-agent-toolbar-group");
+			groups.forEach((g) => spacer.before(g));
+		}
+
 		/* Tab bar initial render */
 		this.refreshTabBar();
 
 		/* Sidebar initial render */
 		this.sidebar.render();
 
-		/* Listen for workspace changes */
-		this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
-			void this.updateContextIndicator();
-		}));
-
 		/* Listen for tab events */
 		this.deps.eventBus.on("tab:switched", () => this.onTabSwitched());
 		this.deps.eventBus.on("tab:created", () => this.refreshTabBar());
 		this.deps.eventBus.on("tab:closed", () => this.refreshTabBar());
 
-		await this.updateContextIndicator();
 		this.messageList.addSystemMessage("Welcome. Configure authentication in settings, then send a message.");
 	}
 
@@ -188,16 +177,31 @@ export class ChatView extends ItemView {
 		await this.messageList?.finishAssistantMessage(content, toolCalls);
 	}
 
+	/* ── Thinking stream ── */
+
+	startThinking(): void {
+		this.messageList?.startThinking();
+	}
+
+	appendThinkingToken(token: string): void {
+		this.messageList?.appendThinkingToken(token);
+	}
+
+	finishThinking(): void {
+		this.messageList?.finishThinking();
+	}
+
+	/* ── Live tool call ── */
+
+	addLiveToolCall(toolCall: ToolCall): void {
+		this.messageList?.addLiveToolCall(toolCall);
+	}
+
 	showError(content: string): void {
 		this.messageList?.showError(content);
 	}
 
 	showLoading(isLoading: boolean): void {
-		if (isLoading) {
-			this.loadingEl?.show();
-		} else {
-			this.loadingEl?.hide();
-		}
 		this.inputArea?.setStreaming(isLoading);
 	}
 
@@ -247,19 +251,5 @@ export class ChatView extends ItemView {
 		if (layout) {
 			layout.classList.toggle("sidebar-open", this.sidebarVisible);
 		}
-	}
-
-	private async updateContextIndicator(): Promise<void> {
-		if (!this.contextEl) return;
-		const file = this.app.workspace.getActiveFile();
-		if (!(file instanceof TFile) || file.extension !== "md") {
-			this.contextEl.setText("Context: no active note");
-			return;
-		}
-
-		const content = await this.app.vault.read(file);
-		const maxSize = this.deps.getMaxContextSize();
-		const truncated = content.length > maxSize ? " (truncated)" : "";
-		this.contextEl.setText(`Context: ${file.path}${truncated}`);
 	}
 }

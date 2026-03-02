@@ -1,11 +1,12 @@
 import type { App, Component } from "obsidian";
-import { MessageRenderer, type AssistantBubbleState } from "../message-renderer";
+import { MessageRenderer, type AssistantBubbleState, type RendererSettings } from "../message-renderer";
 import { ToolApprovalUI } from "../tool-approval";
 import type { ToolCall, Message } from "../../types";
 
 export interface MessageListConfig {
 	onCopyRaw: (rawMarkdown: string) => void;
 	onRegenerate: (sourceUserText: string) => void;
+	getSettings: () => RendererSettings;
 }
 
 export class MessageList {
@@ -24,7 +25,7 @@ export class MessageList {
 		this.renderer = new MessageRenderer(app, component, this.containerEl, {
 			onCopyRaw: config.onCopyRaw,
 			onRegenerate: config.onRegenerate,
-		});
+		}, config.getSettings);
 		this.toolApprovalUI = new ToolApprovalUI(this.containerEl);
 	}
 
@@ -41,6 +42,37 @@ export class MessageList {
 	appendAssistantToken(token: string): void {
 		if (this.activeAssistantBubble) {
 			this.renderer.appendAssistantToken(this.activeAssistantBubble, token);
+			this.scrollToBottom();
+		}
+	}
+
+	/* ── Thinking stream proxy ── */
+
+	startThinking(): void {
+		if (this.activeAssistantBubble) {
+			this.renderer.startThinking(this.activeAssistantBubble);
+			this.scrollToBottom();
+		}
+	}
+
+	appendThinkingToken(token: string): void {
+		if (this.activeAssistantBubble) {
+			this.renderer.appendThinkingToken(this.activeAssistantBubble, token);
+			this.scrollToBottom();
+		}
+	}
+
+	finishThinking(): void {
+		if (this.activeAssistantBubble) {
+			this.renderer.finishThinking(this.activeAssistantBubble);
+		}
+	}
+
+	/* ── Live tool call proxy ── */
+
+	addLiveToolCall(toolCall: ToolCall): void {
+		if (this.activeAssistantBubble) {
+			this.renderer.addLiveToolCall(this.activeAssistantBubble, toolCall);
 			this.scrollToBottom();
 		}
 	}

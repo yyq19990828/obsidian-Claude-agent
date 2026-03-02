@@ -8,36 +8,29 @@ export interface InputToolbarConfig {
 }
 
 export class InputToolbar {
-	private containerEl: HTMLElement;
 	private modelSelect: HTMLSelectElement;
 	private thinkingSelect: HTMLSelectElement;
-	private permissionSelect: HTMLSelectElement;
 
+	/**
+	 * Renders compact inline selectors directly into a parent container
+	 * (intended to be injected into the input area's bottom bar).
+	 */
 	constructor(parentEl: HTMLElement, private readonly config: InputToolbarConfig) {
-		this.containerEl = parentEl.createDiv({ cls: "claude-agent-input-toolbar" });
-
-		/* Model selector */
-		const modelGroup = this.containerEl.createDiv({ cls: "claude-agent-toolbar-group" });
-		modelGroup.createSpan({ cls: "claude-agent-toolbar-label", text: "Model" });
+		/* Model selector: compact button-style */
+		const modelGroup = parentEl.createDiv({ cls: "claude-agent-toolbar-group" });
 		this.modelSelect = modelGroup.createEl("select", { cls: "claude-agent-toolbar-select" });
 		for (const m of MODELS) {
 			this.modelSelect.createEl("option", { value: m.id, text: m.label });
 		}
 
-		/* Thinking budget */
-		const thinkingGroup = this.containerEl.createDiv({ cls: "claude-agent-toolbar-group" });
-		thinkingGroup.createSpan({ cls: "claude-agent-toolbar-label", text: "Thinking" });
-		this.thinkingSelect = thinkingGroup.createEl("select", { cls: "claude-agent-toolbar-select" });
+		/* Thinking selector */
+		const thinkingGroup = parentEl.createDiv({ cls: "claude-agent-toolbar-group" });
+		thinkingGroup.createSpan({ cls: "claude-agent-toolbar-label", text: "Thinking:" });
+		this.thinkingSelect = thinkingGroup.createEl("select", {
+			cls: "claude-agent-toolbar-select claude-agent-toolbar-accent",
+		});
 		for (const [value, label] of [["off", "Off"], ["normal", "Normal"], ["extended", "Extended"]]) {
 			this.thinkingSelect.createEl("option", { value, text: label });
-		}
-
-		/* Permission mode */
-		const permGroup = this.containerEl.createDiv({ cls: "claude-agent-toolbar-group" });
-		permGroup.createSpan({ cls: "claude-agent-toolbar-label", text: "Permissions" });
-		this.permissionSelect = permGroup.createEl("select", { cls: "claude-agent-toolbar-select" });
-		for (const [value, label] of [["auto_approve", "Auto"], ["confirm", "Confirm"], ["plan_only", "Plan only"]]) {
-			this.permissionSelect.createEl("option", { value, text: label });
 		}
 
 		this.syncFromSettings();
@@ -48,19 +41,15 @@ export class InputToolbar {
 		this.thinkingSelect.addEventListener("change", () => {
 			this.config.onThinkingChange(this.thinkingSelect.value);
 		});
-		this.permissionSelect.addEventListener("change", () => {
-			this.config.onPermissionChange(this.permissionSelect.value);
-		});
 	}
 
 	syncFromSettings(): void {
 		const s = this.config.getSettings();
 		this.modelSelect.value = s.model;
 		this.thinkingSelect.value = s.thinkingBudget;
-		this.permissionSelect.value = s.permissionMode;
 	}
 
 	destroy(): void {
-		this.containerEl.remove();
+		/* No container to remove — elements are owned by parent */
 	}
 }

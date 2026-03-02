@@ -1,16 +1,28 @@
-import type { ClaudeAgentSettings, SdkToolToggles, ClaudeSettingSources } from "./types";
+import type { ClaudeAgentSettings, SdkToolToggles, ClaudeSettingSources, VaultToolPermissions, ConfigLayerToggles } from "./types";
 
 export const DEFAULT_SDK_TOOL_TOGGLES: SdkToolToggles = {
-	Read: false,
-	Write: false,
-	Edit: false,
-	Bash: false,
-	Glob: false,
-	Grep: false,
-	Skill: false,
-	WebFetch: false,
-	WebSearch: false,
-	NotebookEdit: false,
+	Read: "deny",
+	Write: "deny",
+	Edit: "deny",
+	Bash: "deny",
+	Glob: "deny",
+	Grep: "deny",
+	Skill: "deny",
+	WebFetch: "deny",
+	WebSearch: "deny",
+	NotebookEdit: "deny",
+};
+
+export const DEFAULT_VAULT_TOOL_PERMISSIONS: VaultToolPermissions = {
+	read_note: "ask",
+	write_note: "ask",
+	modify_note: "ask",
+};
+
+export const DEFAULT_CONFIG_LAYER_TOGGLES: ConfigLayerToggles = {
+	userEnabled: false,
+	projectEnabled: false,
+	customEnabled: false,
 };
 
 export const DEFAULT_CLAUDE_SETTING_SOURCES: ClaudeSettingSources = {
@@ -40,6 +52,8 @@ export const DEFAULT_SETTINGS: ClaudeAgentSettings = {
 	userName: "",
 	autoScroll: true,
 	autoGenerateTitle: true,
+	showDetailedThinking: false,
+	showDetailedTools: false,
 
 	/* Auth */
 	apiKey: "",
@@ -59,6 +73,7 @@ export const DEFAULT_SETTINGS: ClaudeAgentSettings = {
 	/* SDK access (safe/super mode) */
 	safeMode: true,
 	sdkToolToggles: { ...DEFAULT_SDK_TOOL_TOGGLES },
+	vaultToolPermissions: { ...DEFAULT_VAULT_TOOL_PERMISSIONS },
 	claudeSettingSources: { ...DEFAULT_CLAUDE_SETTING_SOURCES },
 
 	/* Context */
@@ -72,6 +87,10 @@ export const DEFAULT_SETTINGS: ClaudeAgentSettings = {
 
 	/* Environment */
 	envVars: {},
+
+	/* Config file layers */
+	agentConfigSubdir: ".agent",
+	configLayerToggles: { ...DEFAULT_CONFIG_LAYER_TOGGLES },
 
 	/* Advanced */
 	maxMessagesPerConversation: MAX_MESSAGES_PER_CONVERSATION,

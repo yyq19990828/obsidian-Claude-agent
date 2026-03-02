@@ -5,8 +5,8 @@ import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { ContextService } from "./context";
-import { createVaultMcpServer } from "./vault-tools";
-import type { ClaudeAgentSettings, ToolCall, SdkToolToggles } from "../types";
+import { buildVaultMcpServer } from "./vault-tools";
+import type { ClaudeAgentSettings, ToolCall, SdkToolToggles, ToolPermission } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
@@ -65,10 +65,59 @@ function extractToolCalls(message: SDKMessage): ToolCall[] {
 			toolName,
 			input,
 			status: "pending",
-			filePath: typeof input.path === "string" ? input.path : undefined,
+			filePath: typeof input.path === "string" ? input.path : (typeof input.file_path === "string" ? input.file_path : undefined),
 		});
 	}
 	return calls;
+}
+
+/**
+ * Extract tool results from a `user` message that contains tool_result blocks.
+ * The SDK sends these after executing tools, mapping tool_use_id → result content.
+ */
+function extractToolResults(message: SDKMessage): Map<string, string> {
+	const results = new Map<string, string>();
+	if (message.type !== "user") {
+		return results;
+	}
+
+	const content = isRecord(message.message) ? message.message.content : undefined;
+	if (!Array.isArray(content)) {
+		return results;
+	}
+
+	for (const block of content) {
+		if (!isRecord(block) || block.type !== "tool_result") {
+			continue;
+		}
+
+		const toolUseId = typeof block.tool_use_id === "string" ? block.tool_use_id : "";
+		if (!toolUseId) continue;
+
+		/* content can be a string or an array of content blocks */
+		let resultText: string;
+		if (typeof block.content === "string") {
+			resultText = block.content;
+		} else if (Array.isArray(block.content)) {
+			const parts: string[] = [];
+			for (const part of block.content) {
+				if (isRecord(part) && part.type === "text" && typeof part.text === "string") {
+					parts.push(part.text);
+				}
+			}
+			resultText = parts.join("\n");
+		} else {
+			resultText = "";
+		}
+
+		/* Truncate very long results for UI display */
+		if (resultText.length > 2000) {
+			resultText = resultText.slice(0, 2000) + "\n... (truncated)";
+		}
+
+		results.set(toolUseId, resultText);
+	}
+	return results;
 }
 
 function extractTextDelta(message: SDKMessage): string | null {
@@ -106,16 +155,21 @@ function extractThinkingDelta(message: SDKMessage): string | null {
 export class AgentService {
 	private activeAbortControllers = new Map<string, AbortController>();
 	private sessions = new Map<string, string>();
-	private vaultServer;
 
 	constructor(
 		private readonly app: App,
 		private readonly getSettings: () => ClaudeAgentSettings,
 		private readonly requestToolApproval: (toolCall: ToolCall) => Promise<boolean>
-	) {
-		this.vaultServer = createVaultMcpServer(
-			app,
-			() => this.getSettings().confirmFileOperations,
+	) {}
+
+	private buildVaultServer(settings: ClaudeAgentSettings) {
+		return buildVaultMcpServer(
+			this.app,
+			settings.vaultToolPermissions,
+			(name) => {
+				const perms = settings.vaultToolPermissions as unknown as Record<string, string>;
+				return (perms[name] ?? "ask") as ToolPermission;
+			},
 			(toolCall) => this.requestToolApproval(toolCall)
 		);
 	}
@@ -206,15 +260,86 @@ export class AgentService {
 	}
 
 	private buildAllowedTools(settings: ClaudeAgentSettings): string[] {
-		const tools: string[] = ["mcp__obsidian-vault__*"];
+		const allowed: string[] = [];
+
+		/* Vault MCP tools: both "allow" and "ask" must be in allowedTools.
+		   With permissionMode "dontAsk", the SDK denies anything NOT listed here.
+		   Actual permission enforcement (ask prompt) happens inside the MCP handler. */
+		const vaultPerms = settings.vaultToolPermissions;
+		const vaultToolMap: Record<string, string> = {
+			read_note: "mcp__obsidian-vault__read_note",
+			write_note: "mcp__obsidian-vault__write_note",
+			modify_note: "mcp__obsidian-vault__modify_note",
+		};
+		for (const [key, mcpName] of Object.entries(vaultToolMap)) {
+			const perm = (vaultPerms as unknown as Record<string, ToolPermission>)[key] ?? "ask";
+			if (perm === "allow" || perm === "ask") {
+				allowed.push(mcpName);
+			}
+		}
+
+		/* SDK built-in tools */
 		if (!settings.safeMode) {
-			for (const [name, enabled] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, boolean][]) {
-				if (enabled) {
-					tools.push(name);
+			for (const [name, perm] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, ToolPermission][]) {
+				if (perm === "allow") {
+					allowed.push(name);
 				}
 			}
 		}
-		return tools;
+		return allowed;
+	}
+
+	private buildDisallowedTools(settings: ClaudeAgentSettings): string[] {
+		const disallowed: string[] = [];
+
+		/* Vault MCP tools: hide "deny" tools from the model entirely */
+		const vaultPerms = settings.vaultToolPermissions;
+		const vaultToolMap: Record<string, string> = {
+			read_note: "mcp__obsidian-vault__read_note",
+			write_note: "mcp__obsidian-vault__write_note",
+			modify_note: "mcp__obsidian-vault__modify_note",
+		};
+		for (const [key, mcpName] of Object.entries(vaultToolMap)) {
+			const perm = (vaultPerms as unknown as Record<string, ToolPermission>)[key] ?? "ask";
+			if (perm === "deny") {
+				disallowed.push(mcpName);
+			}
+		}
+
+		return disallowed;
+	}
+
+	private buildAvailableTools(settings: ClaudeAgentSettings): string[] | undefined {
+		if (settings.safeMode) {
+			/* Safe mode: no SDK built-in tools, only MCP vault tools */
+			return [];
+		}
+		const tools: string[] = [];
+		for (const [name, perm] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, ToolPermission][]) {
+			if (perm === "allow" || perm === "ask") {
+				tools.push(name);
+			}
+		}
+		return tools.length > 0 ? tools : [];
+	}
+
+	private buildPermissionMode(settings: ClaudeAgentSettings): "default" | "acceptEdits" | "bypassPermissions" | "plan" | "dontAsk" {
+		if (settings.safeMode) {
+			return "plan";
+		}
+		switch (settings.permissionMode) {
+			case "auto_approve":
+				return "bypassPermissions";
+			case "plan_only":
+				return "plan";
+			default:
+				/* "confirm" mode: use "acceptEdits" so file-write operations
+				   are not blocked by the SDK's internal file-permission layer
+				   (which requires CLI-interactive approval that can't work in
+				   Obsidian).  Tool-level access control is handled by canUseTool
+				   + allowedTools instead. */
+				return "acceptEdits";
+		}
 	}
 
 	private buildSettingSources(settings: ClaudeAgentSettings): ("user" | "project" | "local")[] | undefined {
@@ -263,6 +388,50 @@ export class AgentService {
 
 			const sessionId = this.sessions.get(tabId);
 			const settingSources = this.buildSettingSources(settings);
+			const availableTools = this.buildAvailableTools(settings);
+			const permMode = this.buildPermissionMode(settings);
+			const isBypass = permMode === "bypassPermissions";
+
+			/* Build canUseTool callback — this is called by the SDK for any tool
+			   NOT in allowedTools.  We need it for "confirm" mode so "ask" tools
+			   trigger the approval UI, and everything else gets denied. */
+			const askSdkTools = new Set<string>();
+			if (!settings.safeMode && settings.permissionMode === "confirm") {
+				for (const [name, perm] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, ToolPermission][]) {
+					if (perm === "ask") {
+						askSdkTools.add(name);
+					}
+				}
+			}
+
+			const needsCanUseTool = settings.permissionMode === "confirm" && !settings.safeMode;
+			const canUseTool = needsCanUseTool
+				? async (toolName: string, input: Record<string, unknown>) => {
+					/* "ask" SDK tools → prompt the user */
+					if (askSdkTools.has(toolName)) {
+						const toolCall: ToolCall = {
+							id: crypto.randomUUID(),
+							toolName,
+							input,
+							status: "pending",
+							filePath: typeof input.file_path === "string" ? input.file_path : (typeof input.path === "string" ? input.path : undefined),
+						};
+						const approved = await this.requestToolApproval(toolCall);
+						return approved
+							? { behavior: "allow" as const }
+							: { behavior: "deny" as const, message: "User rejected tool call" };
+					}
+					/* Tools not explicitly configured → deny */
+					return { behavior: "deny" as const, message: "Tool not permitted by current settings" };
+				}
+				: undefined;
+
+			const disallowedTools = this.buildDisallowedTools(settings);
+			const vaultServer = this.buildVaultServer(settings);
+			const mcpServers: Record<string, ReturnType<typeof buildVaultMcpServer> & object> = {};
+			if (vaultServer) {
+				mcpServers["obsidian-vault"] = vaultServer;
+			}
 
 			const options = {
 				cwd,
@@ -271,10 +440,13 @@ export class AgentService {
 				resume: sessionId,
 				abortController,
 				env,
-				mcpServers: {
-					"obsidian-vault": this.vaultServer,
-				},
+				mcpServers,
 				allowedTools: this.buildAllowedTools(settings),
+				...(disallowedTools.length > 0 ? { disallowedTools } : {}),
+				...(availableTools !== undefined ? { tools: availableTools } : {}),
+				permissionMode: permMode,
+				...(isBypass ? { allowDangerouslySkipPermissions: true } : {}),
+				...(canUseTool ? { canUseTool } : {}),
 				...(settingSources ? { settingSources } : {}),
 				...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
 			};
@@ -283,6 +455,11 @@ export class AgentService {
 				prompt,
 				options,
 			});
+
+			/* Pending tool calls from the most recent assistant message,
+			   waiting for the user message that contains tool_result blocks. */
+			let pendingToolCalls: ToolCall[] = [];
+			let pendingAssistantText = "";
 
 			for await (const message of stream) {
 				if (message.type === "system" && message.subtype === "init") {
@@ -318,26 +495,84 @@ export class AgentService {
 					}
 
 					const toolCalls = extractToolCalls(message);
-					for (const toolCall of toolCalls) {
+					const assistantText = extractAssistantText(message);
+
+					if (toolCalls.length > 0) {
+						/* Store pending tool calls — actual results will arrive
+						   in the subsequent `user` message with tool_result blocks. */
+						pendingToolCalls = toolCalls;
+						pendingAssistantText = assistantText;
+					} else {
+						/* No tool calls: flush any remaining pending and emit */
+						if (pendingToolCalls.length > 0) {
+							for (const tc of pendingToolCalls) {
+								yield {
+									type: "tool_executed",
+									toolCall: { ...tc, status: "executed", result: tc.result ?? "" },
+								};
+							}
+							yield {
+								type: "assistant_complete",
+								content: pendingAssistantText,
+								toolCalls: pendingToolCalls,
+							};
+							pendingToolCalls = [];
+							pendingAssistantText = "";
+						}
+
+						yield {
+							type: "assistant_complete",
+							content: assistantText,
+							toolCalls: [],
+						};
+					}
+					continue;
+				}
+
+				/* User message with tool_result blocks — match results to pending tool calls */
+				if (message.type === "user" && pendingToolCalls.length > 0) {
+					const resultsMap = extractToolResults(message);
+
+					for (const tc of pendingToolCalls) {
+						const result = resultsMap.get(tc.id) ?? "";
 						yield {
 							type: "tool_executed",
-							toolCall: {
-								...toolCall,
-								status: "executed",
-								result: "Tool call completed.",
-							},
+							toolCall: { ...tc, status: "executed", result },
 						};
 					}
 
 					yield {
 						type: "assistant_complete",
-						content: extractAssistantText(message),
-						toolCalls,
+						content: pendingAssistantText,
+						toolCalls: pendingToolCalls.map((tc) => ({
+							...tc,
+							status: "executed" as const,
+							result: resultsMap.get(tc.id) ?? "",
+						})),
 					};
+					pendingToolCalls = [];
+					pendingAssistantText = "";
 					continue;
 				}
 
 				if (message.type === "result") {
+					/* Flush any remaining pending tool calls */
+					if (pendingToolCalls.length > 0) {
+						for (const tc of pendingToolCalls) {
+							yield {
+								type: "tool_executed",
+								toolCall: { ...tc, status: "executed", result: tc.result ?? "" },
+							};
+						}
+						yield {
+							type: "assistant_complete",
+							content: pendingAssistantText,
+							toolCalls: pendingToolCalls,
+						};
+						pendingToolCalls = [];
+						pendingAssistantText = "";
+					}
+
 					if (message.subtype === "success") {
 						yield { type: "result", success: true, text: message.result };
 					} else {

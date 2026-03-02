@@ -1,7 +1,7 @@
 import { App, normalizePath, TFile } from "obsidian";
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import type { ToolCall } from "../types";
+import type { ToolCall, ToolPermission, VaultToolPermissions } from "../types";
 
 function isPathValid(path: string): boolean {
 	if (!path || path.startsWith("/") || path.includes("\\")) {
@@ -34,140 +34,151 @@ async function ensureParentFolders(app: App, path: string): Promise<void> {
 	}
 }
 
-async function confirmWriteOperation(
-	toolName: "write_note" | "modify_note",
+async function checkVaultToolPermission(
+	toolName: "read_note" | "write_note" | "modify_note",
 	input: Record<string, unknown>,
 	path: string,
-	shouldConfirmFileOperations: () => boolean,
+	getPermission: (name: string) => ToolPermission,
 	requestToolApproval: (toolCall: ToolCall) => Promise<boolean>
-): Promise<boolean> {
-	if (!shouldConfirmFileOperations()) {
-		return true;
+): Promise<{ allowed: boolean; reason?: string }> {
+	const perm = getPermission(toolName);
+	if (perm === "deny") {
+		return { allowed: false, reason: "This tool is denied by your vault tool permissions." };
 	}
-
-	return requestToolApproval({
+	if (perm === "allow") {
+		return { allowed: true };
+	}
+	/* perm === "ask" */
+	const approved = await requestToolApproval({
 		id: crypto.randomUUID(),
 		toolName,
 		input,
 		status: "pending",
 		filePath: path,
 	});
+	return { allowed: approved, reason: approved ? undefined : "User rejected this file operation." };
 }
 
-export function createVaultMcpServer(
+/**
+ * Build the vault MCP server dynamically based on current permissions.
+ * Only tools whose permission is NOT "deny" are registered.
+ * Returns null if all tools are denied (no server needed).
+ */
+export function buildVaultMcpServer(
 	app: App,
-	shouldConfirmFileOperations: () => boolean,
+	permissions: VaultToolPermissions,
+	getVaultToolPermission: (name: string) => ToolPermission,
 	requestToolApproval: (toolCall: ToolCall) => Promise<boolean>
-) {
-	const readNote = tool(
-		"read_note",
-		"Read content from a note in the current Obsidian vault.",
-		{
-			path: z.string().min(1),
-		},
-		async ({ path }) => {
-			if (!isPathValid(path)) {
-				return textResult("Path is outside the vault boundary");
+): ReturnType<typeof createSdkMcpServer> | null {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const tools: any[] = [];
+
+	if (permissions.read_note !== "deny") {
+		tools.push(tool(
+			"read_note",
+			"Read content from a note in the current Obsidian vault.",
+			{
+				path: z.string().min(1),
+			},
+			async ({ path }) => {
+				if (!isPathValid(path)) {
+					return textResult("Path is outside the vault boundary");
+				}
+				const check = await checkVaultToolPermission(
+					"read_note", { path }, path, getVaultToolPermission, requestToolApproval
+				);
+				if (!check.allowed) {
+					return textResult(check.reason ?? "Operation denied.");
+				}
+				const file = app.vault.getAbstractFileByPath(normalizePath(path));
+				if (!file) {
+					return textResult(`File not found: ${path}`);
+				}
+				if (!(file instanceof TFile)) {
+					return textResult(`Path is a folder, not a file: ${path}`);
+				}
+				const content = await app.vault.read(file);
+				return textResult(content);
 			}
+		));
+	}
 
-			const file = app.vault.getAbstractFileByPath(normalizePath(path));
-			if (!file) {
-				return textResult(`File not found: ${path}`);
+	if (permissions.write_note !== "deny") {
+		tools.push(tool(
+			"write_note",
+			"Create or overwrite a note in the current Obsidian vault.",
+			{
+				path: z.string().min(1),
+				content: z.string(),
+			},
+			async ({ path, content }) => {
+				if (!isPathValid(path)) {
+					return textResult("Path is outside the vault boundary");
+				}
+				const check = await checkVaultToolPermission(
+					"write_note", { path, content }, path, getVaultToolPermission, requestToolApproval
+				);
+				if (!check.allowed) {
+					return textResult(check.reason ?? "Operation denied.");
+				}
+				const normalized = normalizePath(path);
+				await ensureParentFolders(app, normalized);
+				const file = app.vault.getAbstractFileByPath(normalized);
+				if (file instanceof TFile) {
+					await app.vault.modify(file, content);
+				} else {
+					await app.vault.create(normalized, content);
+				}
+				return textResult(`Successfully wrote to ${normalized}`);
 			}
-			if (!(file instanceof TFile)) {
-				return textResult(`Path is a folder, not a file: ${path}`);
+		));
+	}
+
+	if (permissions.modify_note !== "deny") {
+		tools.push(tool(
+			"modify_note",
+			"Replace specific content inside an existing note.",
+			{
+				path: z.string().min(1),
+				oldContent: z.string(),
+				newContent: z.string(),
+			},
+			async ({ path, oldContent, newContent }) => {
+				if (!isPathValid(path)) {
+					return textResult("Path is outside the vault boundary");
+				}
+				const check = await checkVaultToolPermission(
+					"modify_note", { path, oldContent, newContent }, path, getVaultToolPermission, requestToolApproval
+				);
+				if (!check.allowed) {
+					return textResult(check.reason ?? "Operation denied.");
+				}
+				const normalized = normalizePath(path);
+				const file = app.vault.getAbstractFileByPath(normalized);
+				if (!(file instanceof TFile)) {
+					return textResult(`File not found: ${normalized}`);
+				}
+				const content = await app.vault.read(file);
+				if (!content.includes(oldContent)) {
+					return textResult(`Could not find the specified content in ${normalized}`);
+				}
+				const matchCount = content.split(oldContent).length - 1;
+				if (matchCount > 1) {
+					return textResult("Multiple matches found. Please provide more context to identify the exact location.");
+				}
+				await app.vault.modify(file, content.replace(oldContent, newContent));
+				return textResult(`Successfully modified ${normalized}`);
 			}
+		));
+	}
 
-			const content = await app.vault.read(file);
-			return textResult(content);
-		}
-	);
-
-	const writeNote = tool(
-		"write_note",
-		"Create or overwrite a note in the current Obsidian vault.",
-		{
-			path: z.string().min(1),
-			content: z.string(),
-		},
-		async ({ path, content }) => {
-			if (!isPathValid(path)) {
-				return textResult("Path is outside the vault boundary");
-			}
-
-			const approved = await confirmWriteOperation(
-				"write_note",
-				{ path, content },
-				path,
-				shouldConfirmFileOperations,
-				requestToolApproval
-			);
-			if (!approved) {
-				return textResult("User rejected this file operation.");
-			}
-
-			const normalized = normalizePath(path);
-			await ensureParentFolders(app, normalized);
-			const file = app.vault.getAbstractFileByPath(normalized);
-
-			if (file instanceof TFile) {
-				await app.vault.modify(file, content);
-			} else {
-				await app.vault.create(normalized, content);
-			}
-
-			return textResult(`Successfully wrote to ${normalized}`);
-		}
-	);
-
-	const modifyNote = tool(
-		"modify_note",
-		"Replace specific content inside an existing note.",
-		{
-			path: z.string().min(1),
-			oldContent: z.string(),
-			newContent: z.string(),
-		},
-		async ({ path, oldContent, newContent }) => {
-			if (!isPathValid(path)) {
-				return textResult("Path is outside the vault boundary");
-			}
-
-			const approved = await confirmWriteOperation(
-				"modify_note",
-				{ path, oldContent, newContent },
-				path,
-				shouldConfirmFileOperations,
-				requestToolApproval
-			);
-			if (!approved) {
-				return textResult("User rejected this file operation.");
-			}
-
-			const normalized = normalizePath(path);
-			const file = app.vault.getAbstractFileByPath(normalized);
-			if (!(file instanceof TFile)) {
-				return textResult(`File not found: ${normalized}`);
-			}
-
-			const content = await app.vault.read(file);
-			if (!content.includes(oldContent)) {
-				return textResult(`Could not find the specified content in ${normalized}`);
-			}
-
-			const matchCount = content.split(oldContent).length - 1;
-			if (matchCount > 1) {
-				return textResult("Multiple matches found. Please provide more context to identify the exact location.");
-			}
-
-			await app.vault.modify(file, content.replace(oldContent, newContent));
-			return textResult(`Successfully modified ${normalized}`);
-		}
-	);
+	if (tools.length === 0) {
+		return null;
+	}
 
 	return createSdkMcpServer({
 		name: "obsidian-vault",
 		version: "1.0.0",
-		tools: [readNote, writeNote, modifyNote],
+		tools,
 	});
 }

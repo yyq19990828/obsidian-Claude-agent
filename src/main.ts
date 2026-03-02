@@ -1,23 +1,29 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Plugin, WorkspaceLeaf, FileSystemAdapter } from "obsidian";
+import process from "process";
 import { AgentService } from "./agent/agent-service";
 import { ChatView, CHAT_VIEW_TYPE } from "./ui/chat-view";
 import { ClaudeAgentSettingTab } from "./settings/settings-tab";
-import { DEFAULT_SETTINGS, DEFAULT_SDK_TOOL_TOGGLES, DEFAULT_CLAUDE_SETTING_SOURCES } from "./constants";
+import { DEFAULT_SETTINGS, DEFAULT_SDK_TOOL_TOGGLES, DEFAULT_CLAUDE_SETTING_SOURCES, DEFAULT_VAULT_TOOL_PERMISSIONS, DEFAULT_CONFIG_LAYER_TOGGLES } from "./constants";
 import { EventBus } from "./state/event-bus";
 import { ConversationStore } from "./state/conversation-store";
 import { TabManager } from "./state/tab-manager";
 import { InlineEditHandler } from "./ui/inline-edit/inline-edit-handler";
+import { SettingsResolver } from "./settings/settings-resolver";
 import type {
 	AgentEvent,
 	ClaudeAgentSettings,
 	Conversation,
 	PermissionMode,
+	ResolvedSettings,
 	ThinkingBudget,
 	ToolCall,
+	ToolPermission,
 } from "./types";
 
 export default class ClaudeAgentPlugin extends Plugin {
 	settings: ClaudeAgentSettings = { ...DEFAULT_SETTINGS };
+	resolvedSettings: ResolvedSettings = { merged: { ...DEFAULT_SETTINGS }, overrides: {} };
+	resolver: SettingsResolver | null = null;
 	private agentService: AgentService | null = null;
 	private eventBus = new EventBus();
 	private store: ConversationStore | null = null;
@@ -31,6 +37,14 @@ export default class ClaudeAgentPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadSettings();
 
+		/* Construct resolver */
+		const adapter = this.app.vault.adapter;
+		const vaultDir = adapter instanceof FileSystemAdapter ? adapter.getBasePath() : "";
+		const pluginDir = vaultDir ? `${vaultDir}/.obsidian/plugins/${this.manifest.id}` : "";
+		const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "";
+		this.resolver = new SettingsResolver(pluginDir, vaultDir, homeDir);
+		this.resolvedSettings = this.resolver.resolve(this.settings);
+
 		/* State management */
 		this.store = new ConversationStore(this, this.eventBus);
 		this.tabManager = new TabManager(this.store, this.eventBus);
@@ -43,7 +57,7 @@ export default class ClaudeAgentPlugin extends Plugin {
 		/* Agent service */
 		this.agentService = new AgentService(
 			this.app,
-			() => this.settings,
+			() => this.resolvedSettings.merged,
 			(toolCall: ToolCall) => this.getChatView()?.requestToolApproval(toolCall) ?? Promise.resolve(false)
 		);
 
@@ -71,6 +85,8 @@ export default class ClaudeAgentPlugin extends Plugin {
 					model: this.settings.model,
 					thinkingBudget: this.settings.thinkingBudget,
 					permissionMode: this.settings.permissionMode,
+					showDetailedThinking: this.settings.showDetailedThinking,
+					showDetailedTools: this.settings.showDetailedTools,
 				}),
 				onModelChange: (model) => { this.settings.model = model; void this.saveSettings(); },
 				onThinkingChange: (budget) => { this.settings.thinkingBudget = budget as ThinkingBudget; void this.saveSettings(); },
@@ -128,18 +144,54 @@ export default class ClaudeAgentPlugin extends Plugin {
 
 	async loadSettings(): Promise<void> {
 		const saved = ((await this.loadData()) ?? {}) as Partial<ClaudeAgentSettings>;
+
+		/* Migrate old boolean sdkToolToggles to ToolPermission */
+		const rawToggles = saved.sdkToolToggles as Record<string, boolean | ToolPermission> | undefined;
+		const migratedToggles = { ...DEFAULT_SDK_TOOL_TOGGLES };
+		if (rawToggles) {
+			for (const [key, val] of Object.entries(rawToggles)) {
+				if (key in migratedToggles) {
+					if (typeof val === "boolean") {
+						(migratedToggles as Record<string, ToolPermission>)[key] = val ? "allow" : "deny";
+					} else {
+						(migratedToggles as Record<string, ToolPermission>)[key] = val;
+					}
+				}
+			}
+		}
+
 		this.settings = {
 			...DEFAULT_SETTINGS,
 			...saved,
-			sdkToolToggles: { ...DEFAULT_SDK_TOOL_TOGGLES, ...saved.sdkToolToggles },
+			sdkToolToggles: migratedToggles,
+			vaultToolPermissions: { ...DEFAULT_VAULT_TOOL_PERMISSIONS, ...saved.vaultToolPermissions },
 			claudeSettingSources: { ...DEFAULT_CLAUDE_SETTING_SOURCES, ...saved.claudeSettingSources },
+			configLayerToggles: { ...DEFAULT_CONFIG_LAYER_TOGGLES, ...saved.configLayerToggles },
 		};
+
+		if (this.resolver) {
+			this.resolvedSettings = this.resolver.resolve(this.settings);
+		}
 	}
 
 	async saveSettings(): Promise<void> {
+		/* Resolve settings & reset sessions synchronously so even fire-and-forget
+		   callers (void this.saveSettings()) see the change immediately. */
+		if (this.resolver) {
+			this.resolvedSettings = this.resolver.resolve(this.settings);
+		}
+		this.agentService?.resetAllSessions();
+
+		/* Persist to disk (async) */
 		const allData = (await this.loadData()) ?? {};
 		Object.assign(allData, this.settings);
 		await this.saveData(allData);
+	}
+
+	reloadConfigFiles(): void {
+		if (this.resolver) {
+			this.resolvedSettings = this.resolver.resolve(this.settings);
+		}
 	}
 
 	/* ── Tab management ── */
@@ -286,20 +338,19 @@ export default class ClaudeAgentPlugin extends Plugin {
 				chatView.appendAssistantToken(event.token);
 				break;
 			case "thinking_token":
+				chatView.appendThinkingToken(event.token);
 				this.eventBus.emit("agent:thinking-token", { tabId, token: event.token });
 				break;
 			case "assistant_complete":
+				chatView.finishThinking();
 				break;
 			case "tool_summary":
-				chatView.addSystemMessage(`Tool activity: ${event.summary}`);
 				this.eventBus.emit("status:tool-active", { toolName: "agent", status: event.summary });
 				break;
-			case "tool_executed": {
-				const target = event.toolCall.filePath ? ` (${event.toolCall.filePath})` : "";
-				chatView.addSystemMessage(`Executed ${event.toolCall.toolName}${target}`);
+			case "tool_executed":
+				chatView.addLiveToolCall(event.toolCall);
 				this.eventBus.emit("status:tool-active", { toolName: event.toolCall.toolName, status: "executed" });
 				break;
-			}
 			case "result":
 				if (!event.success && event.error) {
 					chatView.showError(event.error);
