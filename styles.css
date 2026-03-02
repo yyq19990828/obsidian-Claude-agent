@@ -1,10 +1,24 @@
+/* ════════════════════════════════════════════
+   Claude Agent Plugin — Modular CSS
+   ════════════════════════════════════════════ */
+
+/* ── 1. CSS Variables ── */
+
 :root {
 	--claude-agent-accent: #2a9d8f;
 	--claude-agent-accent-soft: color-mix(in srgb, var(--claude-agent-accent) 18%, transparent);
+	--claude-agent-accent-hover: color-mix(in srgb, var(--claude-agent-accent) 30%, transparent);
 	--claude-agent-user-bg: linear-gradient(135deg, #2a9d8f 0%, #1f6f8b 100%);
 	--claude-agent-assistant-bg: color-mix(in srgb, var(--background-secondary) 90%, #f4f1de);
 	--claude-agent-error-bg: color-mix(in srgb, var(--color-red) 18%, var(--background-primary));
+	--claude-agent-sidebar-width: 260px;
+	--claude-agent-toolbar-height: 36px;
+	--claude-agent-radius: 12px;
+	--claude-agent-radius-sm: 8px;
+	--claude-agent-radius-xs: 6px;
 }
+
+/* ── 2. Layout ── */
 
 .claude-agent-view {
 	display: flex;
@@ -16,19 +30,140 @@
 		var(--background-primary);
 }
 
+.claude-agent-layout {
+	display: flex;
+	height: 100%;
+	overflow: hidden;
+	position: relative;
+}
+
+.claude-agent-main {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+}
+
+/* ── 3. Header Bar ── */
+
 .claude-agent-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0.6rem 0.75rem;
+	padding: 0.5rem 0.75rem;
 	border-bottom: 1px solid var(--background-modifier-border);
+	background: color-mix(in srgb, var(--background-primary-alt) 80%, transparent);
+	backdrop-filter: blur(8px);
+	flex-shrink: 0;
 }
 
-.claude-agent-header h3 {
-	margin: 0;
-	font-size: 1rem;
+.claude-agent-header-left,
+.claude-agent-header-right {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.claude-agent-header-title {
+	font-size: 0.95rem;
+	font-weight: 600;
 	letter-spacing: 0.02em;
 }
+
+.claude-agent-header-btn {
+	padding: 4px;
+	border-radius: var(--claude-agent-radius-xs);
+}
+
+.claude-agent-header-btn:hover {
+	background: var(--claude-agent-accent-hover);
+}
+
+/* ── 4. Tab Bar ── */
+
+.claude-agent-tab-bar {
+	display: flex;
+	align-items: center;
+	padding: 0.25rem 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: var(--background-primary-alt);
+	gap: 0.25rem;
+	flex-shrink: 0;
+	overflow-x: auto;
+}
+
+.claude-agent-tab-bar-hidden {
+	display: none;
+}
+
+.claude-agent-tab-list {
+	display: flex;
+	gap: 0.2rem;
+	flex: 1;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.claude-agent-tab-list::-webkit-scrollbar {
+	display: none;
+}
+
+.claude-agent-tab {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.8rem;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 100ms ease;
+	border: 1px solid transparent;
+}
+
+.claude-agent-tab:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-tab.is-active {
+	background: var(--claude-agent-accent-soft);
+	border-color: color-mix(in srgb, var(--claude-agent-accent) 40%, transparent);
+}
+
+.claude-agent-tab-status {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.claude-agent-tab-title {
+	max-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.claude-agent-tab-close {
+	opacity: 0;
+	padding: 1px;
+	transition: opacity 100ms;
+}
+
+.claude-agent-tab:hover .claude-agent-tab-close {
+	opacity: 0.7;
+}
+
+.claude-agent-tab-close:hover {
+	opacity: 1 !important;
+}
+
+.claude-agent-tab-add {
+	flex-shrink: 0;
+	padding: 3px;
+}
+
+/* ── 5. Messages ── */
 
 .claude-agent-messages {
 	flex: 1;
@@ -42,7 +177,7 @@
 .claude-agent-message {
 	width: 100%;
 	padding: 0.65rem 0.75rem;
-	border-radius: 12px;
+	border-radius: var(--claude-agent-radius);
 	line-height: 1.45;
 	word-break: break-word;
 	animation: claude-agent-rise 0.2s ease-out;
@@ -85,6 +220,8 @@
 	margin-bottom: 0;
 }
 
+/* ── 6. Code Blocks ── */
+
 .claude-agent-markdown pre {
 	position: relative;
 	margin: 0.45rem 0 0;
@@ -124,7 +261,7 @@
 	width: 24px;
 	height: 24px;
 	padding: 0;
-	border-radius: 6px;
+	border-radius: var(--claude-agent-radius-xs);
 	border: 1px solid color-mix(in srgb, #0d0f14 80%, transparent);
 	background: color-mix(in srgb, #1f232b 90%, transparent);
 	color: #d7dde8;
@@ -152,10 +289,12 @@
 
 .claude-agent-markdown :not(pre) > code {
 	padding: 0.08rem 0.3rem;
-	border-radius: 6px;
+	border-radius: var(--claude-agent-radius-xs);
 	background: color-mix(in srgb, #10131a 52%, transparent);
 	font-family: var(--font-monospace);
 }
+
+/* ── 7. System & Error Messages ── */
 
 .claude-agent-message-system {
 	align-self: center;
@@ -175,10 +314,13 @@
 	color: var(--text-normal);
 }
 
+/* ── 8. Loading & Queue ── */
+
 .claude-agent-loading {
 	padding: 0.3rem 0.85rem;
 	font-size: 0.85rem;
 	color: var(--text-muted);
+	flex-shrink: 0;
 }
 
 .claude-agent-loading-dots {
@@ -194,39 +336,180 @@
 	border-top: 1px solid var(--background-modifier-border);
 	background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
 	color: var(--text-muted);
+	flex-shrink: 0;
 }
 
+/* ── 9. Input Toolbar ── */
+
+.claude-agent-input-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.35rem 0.7rem;
+	border-top: 1px solid var(--background-modifier-border);
+	background: color-mix(in srgb, var(--background-primary-alt) 90%, transparent);
+	flex-shrink: 0;
+	flex-wrap: wrap;
+}
+
+.claude-agent-toolbar-group {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.claude-agent-toolbar-label {
+	font-size: 0.72rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.claude-agent-toolbar-select {
+	font-size: 0.78rem;
+	padding: 0.15rem 0.35rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	cursor: pointer;
+}
+
+.claude-agent-toolbar-select:hover {
+	border-color: color-mix(in srgb, var(--claude-agent-accent) 50%, var(--background-modifier-border));
+}
+
+/* ── 10. File Context Chips ── */
+
+.claude-agent-file-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	padding: 0.35rem 0.7rem;
+	flex-shrink: 0;
+}
+
+.claude-agent-file-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.15rem 0.4rem;
+	border-radius: 100px;
+	background: var(--claude-agent-accent-soft);
+	border: 1px solid color-mix(in srgb, var(--claude-agent-accent) 30%, transparent);
+	font-size: 0.75rem;
+	color: var(--text-normal);
+}
+
+.claude-agent-file-chip-icon {
+	display: flex;
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-file-chip-name {
+	max-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-file-chip-remove {
+	display: flex;
+	padding: 1px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	opacity: 0.6;
+	border-radius: 50%;
+}
+
+.claude-agent-file-chip-remove:hover {
+	opacity: 1;
+	background: color-mix(in srgb, var(--claude-agent-accent) 20%, transparent);
+}
+
+/* ── 11. Input Area ── */
+
 .claude-agent-input-wrap {
-	display: grid;
-	grid-template-columns: 1fr auto;
+	display: flex;
 	gap: 0.45rem;
 	padding: 0.7rem;
 	border-top: 1px solid var(--background-modifier-border);
 	background: var(--background-primary-alt);
+	flex-shrink: 0;
+	align-items: flex-end;
 }
 
 .claude-agent-input {
-	width: 100%;
+	flex: 1;
 	resize: vertical;
-	min-height: 68px;
+	min-height: 52px;
 	max-height: 180px;
 	padding: 0.55rem;
 	border-radius: 10px;
 	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 85%, transparent);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 0.88rem;
+	line-height: 1.4;
 }
 
-.claude-agent-send {
-	align-self: end;
-	height: fit-content;
+.claude-agent-input:focus {
+	border-color: color-mix(in srgb, var(--claude-agent-accent) 60%, transparent);
+	outline: none;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--claude-agent-accent) 15%, transparent);
 }
+
+.claude-agent-input-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.claude-agent-send,
+.claude-agent-stop {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.4rem 0.75rem;
+	border-radius: var(--claude-agent-radius-sm);
+	font-size: 0.82rem;
+	cursor: pointer;
+}
+
+.claude-agent-stop {
+	background: var(--color-red);
+	color: #fff;
+	border: none;
+}
+
+.claude-agent-stop:hover {
+	filter: brightness(1.1);
+}
+
+/* ── 12. Tool Cards ── */
 
 .claude-agent-tool-card {
 	margin-top: 0.55rem;
 	padding: 0.5rem;
-	border-radius: 8px;
+	border-radius: var(--claude-agent-radius-sm);
 	border: 1px solid var(--background-modifier-border);
 	background: color-mix(in srgb, var(--background-secondary) 75%, transparent);
 	font-size: 0.83rem;
+}
+
+.claude-agent-tool-card.is-pending {
+	border-left: 3px solid #e9a23b;
+}
+
+.claude-agent-tool-card.is-executed {
+	border-left: 3px solid var(--claude-agent-accent);
+}
+
+.claude-agent-tool-card.is-rejected {
+	border-left: 3px solid var(--color-red);
 }
 
 .claude-agent-tool-card-header {
@@ -236,20 +519,44 @@
 	gap: 0.5rem;
 }
 
+.claude-agent-tool-status {
+	font-size: 0.72rem;
+	font-weight: 600;
+	padding: 0.1rem 0.35rem;
+	border-radius: 4px;
+	background: var(--claude-agent-accent-soft);
+}
+
 .claude-agent-tool-path {
 	font-family: var(--font-monospace);
 	margin-top: 0.25rem;
 	color: var(--text-muted);
+	font-size: 0.78rem;
 }
 
 .claude-agent-tool-preview {
 	margin-top: 0.35rem;
 	padding: 0.4rem;
 	background: var(--background-primary);
-	border-radius: 6px;
+	border-radius: var(--claude-agent-radius-xs);
 	max-height: 120px;
 	overflow: auto;
+	font-size: 0.78rem;
 }
+
+.claude-agent-tool-result {
+	margin-top: 0.25rem;
+	color: var(--text-muted);
+	font-size: 0.78rem;
+}
+
+.claude-agent-tool-actions {
+	display: flex;
+	gap: 0.4rem;
+	margin-top: 0.4rem;
+}
+
+/* ── 13. Message Actions ── */
 
 .claude-agent-message-actions {
 	display: flex;
@@ -283,7 +590,7 @@
 	width: 30px;
 	height: 28px;
 	padding: 0;
-	border-radius: 8px;
+	border-radius: var(--claude-agent-radius-sm);
 	border: 1px solid var(--background-modifier-border);
 	background: color-mix(in srgb, var(--background-primary) 85%, transparent);
 	cursor: pointer;
@@ -308,7 +615,7 @@
 	color: var(--text-on-accent);
 	background: color-mix(in srgb, var(--background-modifier-border-focus) 70%, #000);
 	padding: 0.28rem 0.38rem;
-	border-radius: 6px;
+	border-radius: var(--claude-agent-radius-xs);
 	transition: opacity 120ms ease, transform 120ms ease;
 }
 
@@ -316,6 +623,461 @@
 	opacity: 1;
 	transform: translateX(-50%) translateY(0);
 }
+
+/* ── 14. Thinking Block ── */
+
+.claude-agent-thinking-block {
+	margin: 0.4rem 0;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid color-mix(in srgb, var(--claude-agent-accent) 25%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--claude-agent-accent) 5%, var(--background-primary));
+	overflow: hidden;
+}
+
+.claude-agent-thinking-header {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.35rem 0.55rem;
+	cursor: pointer;
+	user-select: none;
+	transition: background 100ms;
+}
+
+.claude-agent-thinking-header:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-thinking-toggle {
+	display: flex;
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+}
+
+.claude-agent-thinking-label {
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: var(--claude-agent-accent);
+}
+
+.claude-agent-thinking-content {
+	padding: 0.55rem;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	white-space: pre-wrap;
+	max-height: 200px;
+	overflow-y: auto;
+	border-top: 1px solid color-mix(in srgb, var(--claude-agent-accent) 15%, transparent);
+}
+
+/* ── 15. Status Panel ── */
+
+.claude-agent-status-panel {
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-primary-alt);
+	flex-shrink: 0;
+}
+
+.claude-agent-status-header {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.65rem;
+	cursor: pointer;
+	user-select: none;
+	font-size: 0.78rem;
+}
+
+.claude-agent-status-header:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-status-toggle {
+	display: flex;
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-status-title {
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.claude-agent-status-content {
+	padding: 0.4rem 0.65rem;
+	border-top: 1px solid var(--background-modifier-border);
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.claude-agent-status-section-title {
+	font-size: 0.72rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-top: 0.4rem;
+	margin-bottom: 0.2rem;
+}
+
+.claude-agent-status-section-title:first-child {
+	margin-top: 0;
+}
+
+.claude-agent-status-tools {
+	font-size: 0.78rem;
+}
+
+.claude-agent-status-tool-item {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.15rem 0;
+}
+
+.claude-agent-status-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.claude-agent-status-dot.is-running {
+	background: #e9a23b;
+	animation: claude-agent-pulse 1s ease infinite;
+}
+
+.claude-agent-status-dot.is-done {
+	background: var(--claude-agent-accent);
+}
+
+.claude-agent-status-empty {
+	font-size: 0.78rem;
+	color: var(--text-faint);
+}
+
+.claude-agent-status-bash {
+	margin: 0;
+	padding: 0.35rem;
+	background: #171a21;
+	border-radius: var(--claude-agent-radius-xs);
+	color: #d7dde8;
+	font-size: 0.75rem;
+	max-height: 100px;
+	overflow-y: auto;
+	white-space: pre-wrap;
+}
+
+/* ── 16. Conversation Sidebar ── */
+
+.claude-agent-sidebar {
+	width: 0;
+	overflow: hidden;
+	background: var(--background-secondary);
+	border-right: 1px solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	transition: width 200ms ease;
+	flex-shrink: 0;
+}
+
+.claude-agent-sidebar.is-visible {
+	width: var(--claude-agent-sidebar-width);
+}
+
+.claude-agent-sidebar-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.6rem 0.65rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-sidebar-title {
+	font-weight: 600;
+	font-size: 0.88rem;
+}
+
+.claude-agent-sidebar-search {
+	display: block;
+	width: calc(100% - 1.3rem);
+	margin: 0.4rem 0.65rem;
+	padding: 0.3rem 0.5rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	font-size: 0.8rem;
+}
+
+.claude-agent-sidebar-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: 0.3rem 0;
+}
+
+.claude-agent-sidebar-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0.65rem;
+	cursor: pointer;
+	transition: background 80ms;
+}
+
+.claude-agent-sidebar-item:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-sidebar-item-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.claude-agent-sidebar-item-title {
+	font-size: 0.82rem;
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-sidebar-item-time {
+	font-size: 0.7rem;
+	color: var(--text-faint);
+	margin-top: 0.1rem;
+}
+
+.claude-agent-sidebar-item-delete {
+	opacity: 0;
+	transition: opacity 80ms;
+	flex-shrink: 0;
+}
+
+.claude-agent-sidebar-item:hover .claude-agent-sidebar-item-delete {
+	opacity: 0.6;
+}
+
+.claude-agent-sidebar-item-delete:hover {
+	opacity: 1 !important;
+}
+
+.claude-agent-sidebar-empty {
+	padding: 1rem;
+	text-align: center;
+	font-size: 0.82rem;
+	color: var(--text-faint);
+}
+
+/* ── 17. Inline Edit ── */
+
+.claude-agent-inline-edit-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.claude-agent-inline-edit-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.4);
+}
+
+.claude-agent-inline-edit-card {
+	position: relative;
+	width: 420px;
+	max-width: 90vw;
+	padding: 1.2rem;
+	border-radius: var(--claude-agent-radius);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.claude-agent-inline-edit-card h3 {
+	margin: 0 0 0.6rem;
+	font-size: 1rem;
+}
+
+.claude-agent-inline-edit-preview {
+	margin: 0 0 0.6rem;
+	padding: 0.5rem;
+	background: var(--background-secondary);
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.8rem;
+	max-height: 100px;
+	overflow: auto;
+}
+
+.claude-agent-inline-edit-input {
+	width: 100%;
+	padding: 0.45rem;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	margin-bottom: 0.6rem;
+	font-size: 0.85rem;
+	resize: vertical;
+}
+
+.claude-agent-inline-edit-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.4rem;
+}
+
+/* ── 18. Diff View ── */
+
+.claude-agent-diff-view {
+	margin: 0.5rem 0;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.claude-agent-diff-header {
+	padding: 0.35rem 0.55rem;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-diff-title {
+	font-size: 0.82rem;
+	font-weight: 600;
+}
+
+.claude-agent-diff-content {
+	padding: 0;
+}
+
+.claude-agent-diff-columns {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0;
+}
+
+.claude-agent-diff-col {
+	min-width: 0;
+	overflow: auto;
+}
+
+.claude-agent-diff-col-label {
+	padding: 0.25rem 0.5rem;
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: var(--text-muted);
+	background: var(--background-primary-alt);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-diff-original {
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-diff-col pre {
+	margin: 0;
+	padding: 0.5rem;
+	font-size: 0.78rem;
+	white-space: pre-wrap;
+	max-height: 200px;
+	overflow: auto;
+}
+
+.claude-agent-diff-original pre {
+	background: color-mix(in srgb, var(--color-red) 5%, var(--background-primary));
+}
+
+.claude-agent-diff-edited pre {
+	background: color-mix(in srgb, var(--claude-agent-accent) 5%, var(--background-primary));
+}
+
+.claude-agent-diff-actions {
+	display: flex;
+	gap: 0.4rem;
+	padding: 0.4rem 0.55rem;
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-primary-alt);
+}
+
+/* ── 19. Settings Page ── */
+
+.claude-agent-settings h2 {
+	margin-top: 1.5rem;
+	margin-bottom: 0.6rem;
+	padding-bottom: 0.3rem;
+	border-bottom: 2px solid var(--claude-agent-accent-soft);
+	color: var(--claude-agent-accent);
+	font-size: 1.05rem;
+}
+
+.claude-agent-settings h2:first-child {
+	margin-top: 0;
+}
+
+.claude-agent-mcp-list,
+.claude-agent-commands-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	margin-bottom: 0.5rem;
+}
+
+.claude-agent-mcp-card,
+.claude-agent-command-card {
+	padding: 0.6rem;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.claude-agent-mcp-empty,
+.claude-agent-commands-empty,
+.claude-agent-env-empty {
+	font-size: 0.82rem;
+	color: var(--text-faint);
+	padding: 0.4rem 0;
+}
+
+.claude-agent-env-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	margin-bottom: 0.5rem;
+}
+
+.claude-agent-env-row {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+}
+
+.claude-agent-env-key,
+.claude-agent-env-value {
+	flex: 1;
+	padding: 0.3rem 0.45rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	font-size: 0.82rem;
+}
+
+.claude-agent-env-key {
+	font-family: var(--font-monospace);
+	max-width: 140px;
+}
+
+.claude-agent-env-remove {
+	font-size: 0.75rem;
+	padding: 0.2rem 0.4rem;
+	border-radius: var(--claude-agent-radius-xs);
+	cursor: pointer;
+}
+
+/* ── 20. Animations ── */
 
 @keyframes claude-agent-rise {
 	from {
@@ -329,16 +1091,12 @@
 }
 
 @keyframes claude-agent-pulse {
-	0% {
-		opacity: 0.25;
-	}
-	50% {
-		opacity: 1;
-	}
-	100% {
-		opacity: 0.25;
-	}
+	0% { opacity: 0.25; }
+	50% { opacity: 1; }
+	100% { opacity: 0.25; }
 }
+
+/* ── 21. Responsive ── */
 
 @media (max-width: 680px) {
 	.claude-agent-message {
@@ -356,10 +1114,35 @@
 	}
 
 	.claude-agent-input-wrap {
+		flex-direction: column;
+	}
+
+	.claude-agent-input-buttons {
+		align-self: flex-end;
+	}
+
+	.claude-agent-sidebar.is-visible {
+		position: absolute;
+		z-index: 10;
+		width: var(--claude-agent-sidebar-width);
+		height: 100%;
+		box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+	}
+
+	.claude-agent-input-toolbar {
+		gap: 0.3rem;
+	}
+
+	.claude-agent-toolbar-label {
+		display: none;
+	}
+
+	.claude-agent-diff-columns {
 		grid-template-columns: 1fr;
 	}
 
-	.claude-agent-send {
-		justify-self: end;
+	.claude-agent-diff-original {
+		border-right: none;
+		border-bottom: 1px solid var(--background-modifier-border);
 	}
 }

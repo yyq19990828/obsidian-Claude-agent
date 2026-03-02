@@ -87,9 +87,25 @@ function extractTextDelta(message: SDKMessage): string | null {
 	return null;
 }
 
+function extractThinkingDelta(message: SDKMessage): string | null {
+	if (message.type !== "stream_event") {
+		return null;
+	}
+
+	const event = message.event as unknown;
+	if (!isRecord(event)) {
+		return null;
+	}
+
+	if (event.type === "content_block_delta" && isRecord(event.delta) && event.delta.type === "thinking_delta" && typeof event.delta.thinking === "string") {
+		return event.delta.thinking;
+	}
+	return null;
+}
+
 export class AgentService {
-	private activeAbortController: AbortController | null = null;
-	private sessionId?: string;
+	private activeAbortControllers = new Map<string, AbortController>();
+	private sessions = new Map<string, string>();
 	private vaultServer;
 
 	constructor(
@@ -104,13 +120,33 @@ export class AgentService {
 		);
 	}
 
-	resetSession(): void {
-		this.sessionId = undefined;
+	resetSession(tabId: string): void {
+		this.sessions.delete(tabId);
 	}
 
-	abortInFlight(): void {
-		this.activeAbortController?.abort();
-		this.activeAbortController = null;
+	resetAllSessions(): void {
+		this.sessions.clear();
+	}
+
+	abortInFlight(tabId?: string): void {
+		if (tabId) {
+			const controller = this.activeAbortControllers.get(tabId);
+			controller?.abort();
+			this.activeAbortControllers.delete(tabId);
+		} else {
+			for (const controller of this.activeAbortControllers.values()) {
+				controller.abort();
+			}
+			this.activeAbortControllers.clear();
+		}
+	}
+
+	getSessionId(tabId: string): string | undefined {
+		return this.sessions.get(tabId);
+	}
+
+	setSessionId(tabId: string, sessionId: string): void {
+		this.sessions.set(tabId, sessionId);
 	}
 
 	private getVaultCwd(): string {
@@ -123,6 +159,11 @@ export class AgentService {
 	}
 
 	private resolveClaudeExecutablePath(): string | undefined {
+		const settings = this.getSettings();
+		if (settings.claudeCliPath && existsSync(settings.claudeCliPath)) {
+			return settings.claudeCliPath;
+		}
+
 		const envPath = process.env.CLAUDE_CODE_PATH;
 		if (envPath && existsSync(envPath)) {
 			return envPath;
@@ -164,7 +205,7 @@ export class AgentService {
 		return undefined;
 	}
 
-	async *sendMessage(userText: string) {
+	async *sendMessage(tabId: string, userText: string) {
 		const settings = this.getSettings();
 		const context = await ContextService.captureActiveNoteContext(this.app, settings.maxContextSize);
 		const prompt = buildPrompt(userText, context, settings.maxContextSize);
@@ -175,24 +216,31 @@ export class AgentService {
 			yield {
 				type: "result",
 				success: false,
-				error: "Claude code executable not found. Set environment variable CLAUDE_CODE_PATH to your claude binary path (for example: ~/.local/bin/claude).",
+				error: "Claude code executable not found. Set environment variable CLAUDE_CODE_PATH or configure the path in settings.",
 			};
 			return;
 		}
 
 		const abortController = new AbortController();
-		this.activeAbortController = abortController;
+		this.activeAbortControllers.set(tabId, abortController);
 
 		try {
-			const env = settings.authMethod === "api_key" && settings.apiKey.trim()
-				? { ...process.env, ANTHROPIC_API_KEY: settings.apiKey.trim() }
-				: { ...process.env };
+			const env: Record<string, string | undefined> = {
+				...process.env,
+				...settings.envVars,
+			};
+
+			if (settings.authMethod === "api_key" && settings.apiKey.trim()) {
+				env.ANTHROPIC_API_KEY = settings.apiKey.trim();
+			}
+
+			const sessionId = this.sessions.get(tabId);
 
 			const options = {
 				cwd,
 				model: settings.model,
 				includePartialMessages: true,
-				resume: this.sessionId,
+				resume: sessionId,
 				abortController,
 				env,
 				mcpServers: {
@@ -209,7 +257,13 @@ export class AgentService {
 
 			for await (const message of stream) {
 				if (message.type === "system" && message.subtype === "init") {
-					this.sessionId = message.session_id;
+					this.sessions.set(tabId, message.session_id);
+					continue;
+				}
+
+				const thinkingDelta = extractThinkingDelta(message);
+				if (thinkingDelta) {
+					yield { type: "thinking_token", token: thinkingDelta };
 					continue;
 				}
 
@@ -277,7 +331,7 @@ export class AgentService {
 					: message,
 			};
 		} finally {
-			this.activeAbortController = null;
+			this.activeAbortControllers.delete(tabId);
 		}
 	}
 }
