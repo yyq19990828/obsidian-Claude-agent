@@ -1,12 +1,14 @@
 import { App, FileSystemAdapter } from "obsidian";
-import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import { query, type SDKMessage, type AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
 import process from "process";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { ContextService } from "./context";
 import { buildVaultMcpServer } from "./vault-tools";
+import { loadFileAgents } from "./agent-loader";
 import type { ClaudeAgentSettings, ToolCall, SdkToolToggles, ToolPermission } from "../types";
+import { PERMISSION_FREE_TOOLS } from "../constants";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
@@ -159,7 +161,8 @@ export class AgentService {
 	constructor(
 		private readonly app: App,
 		private readonly getSettings: () => ClaudeAgentSettings,
-		private readonly requestToolApproval: (toolCall: ToolCall) => Promise<boolean>
+		private readonly requestToolApproval: (toolCall: ToolCall) => Promise<boolean>,
+		private readonly pluginDir?: string,
 	) {}
 
 	private buildVaultServer(settings: ClaudeAgentSettings) {
@@ -267,9 +270,8 @@ export class AgentService {
 		   Actual permission enforcement (ask prompt) happens inside the MCP handler. */
 		const vaultPerms = settings.vaultToolPermissions;
 		const vaultToolMap: Record<string, string> = {
-			read_note: "mcp__obsidian-vault__read_note",
 			write_note: "mcp__obsidian-vault__write_note",
-			modify_note: "mcp__obsidian-vault__modify_note",
+			edit_note: "mcp__obsidian-vault__edit_note",
 		};
 		for (const [key, mcpName] of Object.entries(vaultToolMap)) {
 			const perm = (vaultPerms as unknown as Record<string, ToolPermission>)[key] ?? "ask";
@@ -278,7 +280,10 @@ export class AgentService {
 			}
 		}
 
-		/* SDK built-in tools */
+		/* Permission-free SDK tools — always allowed */
+		allowed.push(...PERMISSION_FREE_TOOLS);
+
+		/* Permission-required SDK tools */
 		if (!settings.safeMode) {
 			for (const [name, perm] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, ToolPermission][]) {
 				if (perm === "allow") {
@@ -295,9 +300,8 @@ export class AgentService {
 		/* Vault MCP tools: hide "deny" tools from the model entirely */
 		const vaultPerms = settings.vaultToolPermissions;
 		const vaultToolMap: Record<string, string> = {
-			read_note: "mcp__obsidian-vault__read_note",
 			write_note: "mcp__obsidian-vault__write_note",
-			modify_note: "mcp__obsidian-vault__modify_note",
+			edit_note: "mcp__obsidian-vault__edit_note",
 		};
 		for (const [key, mcpName] of Object.entries(vaultToolMap)) {
 			const perm = (vaultPerms as unknown as Record<string, ToolPermission>)[key] ?? "ask";
@@ -310,22 +314,26 @@ export class AgentService {
 	}
 
 	private buildAvailableTools(settings: ClaudeAgentSettings): string[] | undefined {
-		if (settings.safeMode) {
-			/* Safe mode: no SDK built-in tools, only MCP vault tools */
-			return [];
-		}
-		const tools: string[] = [];
-		for (const [name, perm] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, ToolPermission][]) {
-			if (perm === "allow" || perm === "ask") {
-				tools.push(name);
+		/* Permission-free tools are always available */
+		const tools: string[] = [...PERMISSION_FREE_TOOLS];
+
+		if (!settings.safeMode) {
+			/* Super mode: add permission-required tools based on toggles */
+			for (const [name, perm] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, ToolPermission][]) {
+				if (perm === "allow" || perm === "ask") {
+					tools.push(name);
+				}
 			}
 		}
-		return tools.length > 0 ? tools : [];
+		return tools;
 	}
 
 	private buildPermissionMode(settings: ClaudeAgentSettings): "default" | "acceptEdits" | "bypassPermissions" | "plan" | "dontAsk" {
 		if (settings.safeMode) {
-			return "plan";
+			// Safe mode restricts available tools to vault MCP tools only.
+			// Use "acceptEdits" so the agent can execute those tools;
+			// access control is enforced by each vault tool's own allow/ask/deny permission.
+			return "acceptEdits";
 		}
 		switch (settings.permissionMode) {
 			case "auto_approve":
@@ -340,6 +348,49 @@ export class AgentService {
 				   + allowedTools instead. */
 				return "acceptEdits";
 		}
+	}
+
+	private buildAgents(settings: ClaudeAgentSettings): Record<string, AgentDefinition> | undefined {
+		if (settings.safeMode) return undefined;
+
+		const agents: Record<string, AgentDefinition> = {};
+		const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "";
+		const vaultCwd = this.getVaultCwd();
+		const pluginDir = this.pluginDir ?? `${vaultCwd}/.obsidian/plugins`;
+
+		// 1. Load filesystem agents (three-layer merge, high overrides low)
+		const fileAgents = loadFileAgents(
+			homeDir,
+			vaultCwd,
+			pluginDir,
+			settings.agentConfigSubdir,
+			settings.configLayerToggles,
+		);
+		for (const fa of fileAgents) {
+			const def: AgentDefinition = {
+				description: fa.description,
+				prompt: fa.prompt,
+			};
+			if (fa.model !== "inherit") def.model = fa.model;
+			if (fa.tools.length > 0) def.tools = fa.tools;
+			if (fa.maxTurns > 0) def.maxTurns = fa.maxTurns;
+			agents[fa.name] = def;
+		}
+
+		// 2. Load UI built-in agents (enabled + name non-empty override filesystem)
+		for (const sa of settings.subagents) {
+			if (!sa.enabled || !sa.name.trim()) continue;
+			const def: AgentDefinition = {
+				description: sa.description,
+				prompt: sa.prompt,
+			};
+			if (sa.model !== "inherit") def.model = sa.model;
+			if (sa.tools.length > 0) def.tools = sa.tools;
+			if (sa.maxTurns > 0) def.maxTurns = sa.maxTurns;
+			agents[sa.name] = def;
+		}
+
+		return Object.keys(agents).length > 0 ? agents : undefined;
 	}
 
 	private buildSettingSources(settings: ClaudeAgentSettings): ("user" | "project" | "local")[] | undefined {
@@ -427,6 +478,7 @@ export class AgentService {
 				: undefined;
 
 			const disallowedTools = this.buildDisallowedTools(settings);
+			const agents = this.buildAgents(settings);
 			const vaultServer = this.buildVaultServer(settings);
 			const mcpServers: Record<string, ReturnType<typeof buildVaultMcpServer> & object> = {};
 			if (vaultServer) {
@@ -449,6 +501,7 @@ export class AgentService {
 				...(canUseTool ? { canUseTool } : {}),
 				...(settingSources ? { settingSources } : {}),
 				...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
+				...(agents ? { agents } : {}),
 			};
 
 			const stream = query({

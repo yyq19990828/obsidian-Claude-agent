@@ -3,17 +3,25 @@ import { z } from "zod";
 const ToolPermissionSchema = z.enum(["allow", "ask", "deny"]);
 
 const SdkToolTogglesSchema = z.object({
-	Read: ToolPermissionSchema,
 	Write: ToolPermissionSchema,
 	Edit: ToolPermissionSchema,
 	Bash: ToolPermissionSchema,
-	Glob: ToolPermissionSchema,
-	Grep: ToolPermissionSchema,
 	Skill: ToolPermissionSchema,
 	WebFetch: ToolPermissionSchema,
 	WebSearch: ToolPermissionSchema,
 	NotebookEdit: ToolPermissionSchema,
 }).partial();
+
+const SubagentConfigSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	description: z.string(),
+	prompt: z.string(),
+	model: z.enum(["sonnet", "opus", "haiku", "inherit"]),
+	tools: z.array(z.string()),
+	maxTurns: z.number().min(0),
+	enabled: z.boolean(),
+});
 
 const McpServerConfigSchema = z.object({
 	id: z.string(),
@@ -38,6 +46,7 @@ export const AgentConfigFileSchema = z.object({
 	permissions: PermissionsSchema,
 	sdkToolToggles: SdkToolTogglesSchema,
 	mcpServers: z.array(McpServerConfigSchema),
+	subagents: z.array(SubagentConfigSchema),
 	commandBlacklist: z.array(z.string()),
 	allowedPaths: z.array(z.string()),
 	permissionMode: z.enum(["auto_approve", "confirm", "plan_only"]),
@@ -99,12 +108,9 @@ export const CONFIG_SCHEMA_KEYS: SchemaKeyNode[] = [
 
 	/* ── SDK tool toggles ── */
 	{ key: "sdkToolToggles", type: "object", children: [
-		{ key: "Read", type: "enum", enumValues: ["allow", "ask", "deny"] },
 		{ key: "Write", type: "enum", enumValues: ["allow", "ask", "deny"] },
 		{ key: "Edit", type: "enum", enumValues: ["allow", "ask", "deny"] },
 		{ key: "Bash", type: "enum", enumValues: ["allow", "ask", "deny"] },
-		{ key: "Glob", type: "enum", enumValues: ["allow", "ask", "deny"] },
-		{ key: "Grep", type: "enum", enumValues: ["allow", "ask", "deny"] },
 		{ key: "Skill", type: "enum", enumValues: ["allow", "ask", "deny"] },
 		{ key: "WebFetch", type: "enum", enumValues: ["allow", "ask", "deny"] },
 		{ key: "WebSearch", type: "enum", enumValues: ["allow", "ask", "deny"] },
@@ -121,6 +127,18 @@ export const CONFIG_SCHEMA_KEYS: SchemaKeyNode[] = [
 		{ key: "enabled", type: "boolean" },
 	]},
 	{ key: "enableAllProjectMcpServers", type: "boolean" },
+
+	/* ── Subagents ── */
+	{ key: "subagents", type: "array", children: [
+		{ key: "id", type: "string" },
+		{ key: "name", type: "string" },
+		{ key: "description", type: "string" },
+		{ key: "prompt", type: "string" },
+		{ key: "model", type: "enum", enumValues: ["sonnet", "opus", "haiku", "inherit"] },
+		{ key: "tools", type: "array" },
+		{ key: "maxTurns", type: "number" },
+		{ key: "enabled", type: "boolean" },
+	]},
 
 	/* ── Plugins ── */
 	{ key: "enabledPlugins", type: "array" },

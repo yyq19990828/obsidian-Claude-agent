@@ -7,6 +7,7 @@ import type {
 	SettingOverrideMap,
 	SdkToolToggles,
 	McpServerConfig,
+	SubagentConfig,
 } from "../types";
 import { parseConfigFile, type AgentConfigFile } from "./config-file-schema";
 
@@ -191,6 +192,15 @@ export class SettingsResolver {
 			for (const s of config.mcpServers) byName.set(s.name, s as unknown as McpServerConfig);
 			target.mcpServers = Array.from(byName.values());
 			overrides.mcpServers = layer;
+		}
+
+		/* subagents: merge by name, dedup */
+		if (config.subagents && config.subagents.length > 0) {
+			const byName = new Map<string, SubagentConfig>();
+			for (const s of target.subagents) byName.set(s.name, s);
+			for (const s of config.subagents) byName.set(s.name, s as unknown as SubagentConfig);
+			target.subagents = Array.from(byName.values());
+			overrides.subagents = layer;
 		}
 
 		/* commandBlacklist: union */

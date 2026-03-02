@@ -1,4 +1,4 @@
-import { App, PluginSettingTab } from "obsidian";
+import { App, PluginSettingTab, Notice } from "obsidian";
 import type ClaudeAgentPlugin from "../main";
 import { SectionGeneral } from "./section-general";
 import { SectionAuth } from "./section-auth";
@@ -52,6 +52,14 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 	private tabBarEl: HTMLElement | null = null;
 	private contentEl: HTMLElement | null = null;
 
+	/**
+	 * Tracks whether SDK Tools settings have been modified since last save/apply.
+	 * Snapshot taken when entering SDK Tools tab; compared on navigation away.
+	 */
+	private sdkDirty = false;
+	private sdkSettingsSnapshot = "";
+	private saveBarEl: HTMLElement | null = null;
+
 	constructor(app: App, plugin: ClaudeAgentPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
@@ -68,6 +76,13 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 
 		this.renderTabBar();
 		this.renderTabContent();
+	}
+
+	/** Called by Obsidian when user closes or navigates away from settings */
+	hide(): void {
+		if (this.sdkDirty) {
+			this.promptSaveAndApply();
+		}
 	}
 
 	private renderTabBar(): void {
@@ -98,6 +113,7 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 	private renderTabContent(): void {
 		if (!this.contentEl) return;
 		this.contentEl.empty();
+		this.saveBarEl = null;
 
 		if (this.activeMainTab === "general") {
 			this.renderGeneralContent();
@@ -120,6 +136,10 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 	private renderSdkToolsContent(): void {
 		if (!this.contentEl) return;
 
+		/* Take snapshot for dirty detection */
+		this.sdkSettingsSnapshot = this.takeSdkSnapshot();
+		this.sdkDirty = false;
+
 		/* Sub-tab bar */
 		const subTabBar = this.contentEl.createDiv({ cls: "claude-agent-settings-sub-tab-bar" });
 		this.renderSubTabBar(subTabBar);
@@ -127,6 +147,26 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 		/* Sub-tab content */
 		const subContent = this.contentEl.createDiv({ cls: "claude-agent-settings-content" });
 		this.renderSubTabContent(subContent);
+
+		/* Sticky save bar (hidden until dirty) */
+		this.saveBarEl = this.contentEl.createDiv({ cls: "claude-agent-save-bar" });
+		this.saveBarEl.style.display = "none";
+
+		const barInner = this.saveBarEl.createDiv({ cls: "claude-agent-save-bar-inner" });
+		barInner.createEl("span", {
+			cls: "claude-agent-save-bar-text",
+			text: "Unsaved changes — SDK Tool changes take effect on new conversations.",
+		});
+		const saveBtn = barInner.createEl("button", {
+			cls: "claude-agent-save-bar-btn",
+			text: "Save & apply",
+		});
+		saveBtn.addEventListener("click", () => {
+			void this.doSaveAndApply();
+		});
+
+		/* Start polling for dirty state (settings change via onChange callbacks) */
+		this.startDirtyCheck();
 	}
 
 	private renderSubTabBar(container: HTMLElement): void {
@@ -141,14 +181,28 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 			if (isActive) btn.addClass("is-active");
 			btn.addEventListener("click", () => {
 				this.activeSubTab = sub.id;
-				this.renderTabContent();
+				/* Re-render only the content portion, not the whole SDK tools area.
+				   Keep dirty state and save bar. */
+				const contentArea = container.nextElementSibling;
+				if (contentArea instanceof HTMLElement) {
+					contentArea.empty();
+					this.renderSubTabSectionOnly(contentArea);
+				}
+				/* Update sub-tab active states */
+				container.querySelectorAll(".claude-agent-settings-sub-tab").forEach((el) => {
+					el.removeClass("is-active");
+				});
+				btn.addClass("is-active");
 			});
 		}
 	}
 
 	private renderSubTabContent(container: HTMLElement): void {
 		container.empty();
+		this.renderSubTabSectionOnly(container);
+	}
 
+	private renderSubTabSectionOnly(container: HTMLElement): void {
 		switch (this.activeSubTab) {
 			case "built-in-tools":
 				new SectionBuiltinTools(container, this.plugin);
@@ -175,6 +229,11 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 	}
 
 	private switchMainTab(tabId: string): void {
+		/* Prompt save if leaving SDK Tools while dirty */
+		if (this.activeMainTab === "sdk-tools" && tabId !== "sdk-tools" && this.sdkDirty) {
+			this.promptSaveAndApply();
+		}
+
 		this.activeMainTab = tabId;
 		this.renderTabBar();
 		this.renderTabContent();
@@ -187,5 +246,66 @@ export class ClaudeAgentSettingTab extends PluginSettingTab {
 		}
 		this.renderTabBar();
 		this.renderTabContent();
+	}
+
+	/* ── Dirty state & save bar ── */
+
+	/**
+	 * Serialise the SDK-relevant settings into a string for comparison.
+	 */
+	private takeSdkSnapshot(): string {
+		const s = this.plugin.settings;
+		return JSON.stringify({
+			sdkToolToggles: s.sdkToolToggles,
+			claudeSettingSources: s.claudeSettingSources,
+			mcpServers: s.mcpServers,
+			subagents: s.subagents,
+			slashCommands: s.slashCommands,
+			envVars: s.envVars,
+		});
+	}
+
+	private checkDirty(): void {
+		if (this.activeMainTab !== "sdk-tools") return;
+		const current = this.takeSdkSnapshot();
+		const wasDirty = this.sdkDirty;
+		this.sdkDirty = current !== this.sdkSettingsSnapshot;
+
+		if (this.sdkDirty !== wasDirty && this.saveBarEl) {
+			this.saveBarEl.style.display = this.sdkDirty ? "flex" : "none";
+		}
+	}
+
+	private dirtyCheckTimer: ReturnType<typeof setInterval> | null = null;
+
+	private startDirtyCheck(): void {
+		this.stopDirtyCheck();
+		this.dirtyCheckTimer = setInterval(() => this.checkDirty(), 500);
+	}
+
+	private stopDirtyCheck(): void {
+		if (this.dirtyCheckTimer !== null) {
+			clearInterval(this.dirtyCheckTimer);
+			this.dirtyCheckTimer = null;
+		}
+	}
+
+	private async doSaveAndApply(): Promise<void> {
+		this.stopDirtyCheck();
+		await this.plugin.saveAndApply();
+		this.sdkSettingsSnapshot = this.takeSdkSnapshot();
+		this.sdkDirty = false;
+		if (this.saveBarEl) {
+			this.saveBarEl.style.display = "none";
+		}
+		this.startDirtyCheck();
+	}
+
+	private promptSaveAndApply(): void {
+		this.stopDirtyCheck();
+		new Notice("SDK Tools settings changed — applying and starting a new conversation.");
+		void this.plugin.saveAndApply();
+		this.sdkSettingsSnapshot = this.takeSdkSnapshot();
+		this.sdkDirty = false;
 	}
 }

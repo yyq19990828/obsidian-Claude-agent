@@ -59,18 +59,19 @@ export type PermissionMode = "auto_approve" | "confirm" | "plan_only";
 export type ToolPermission = "allow" | "ask" | "deny";
 
 export interface VaultToolPermissions {
-	read_note: ToolPermission;
 	write_note: ToolPermission;
-	modify_note: ToolPermission;
+	edit_note: ToolPermission;
 }
 
+/**
+ * SDK tools that require permission — configurable via allow/ask/deny.
+ * Permission-free tools (Read, Glob, Grep, etc.) are always enabled
+ * and not listed here.  See PERMISSION_FREE_TOOLS in constants.ts.
+ */
 export interface SdkToolToggles {
-	Read: ToolPermission;
 	Write: ToolPermission;
 	Edit: ToolPermission;
 	Bash: ToolPermission;
-	Glob: ToolPermission;
-	Grep: ToolPermission;
 	Skill: ToolPermission;
 	WebFetch: ToolPermission;
 	WebSearch: ToolPermission;
@@ -117,6 +118,17 @@ export interface SlashCommand {
 	prompt: string;
 }
 
+export interface SubagentConfig {
+	id: string;
+	name: string;
+	description: string;
+	prompt: string;
+	model: "sonnet" | "opus" | "haiku" | "inherit";
+	tools: string[];
+	maxTurns: number;
+	enabled: boolean;
+}
+
 export interface ClaudeAgentSettings {
 	/* General */
 	userName: string;
@@ -154,6 +166,9 @@ export interface ClaudeAgentSettings {
 
 	/* Slash commands */
 	slashCommands: SlashCommand[];
+
+	/* Subagents */
+	subagents: SubagentConfig[];
 
 	/* Environment */
 	envVars: Record<string, string>;

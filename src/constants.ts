@@ -1,12 +1,29 @@
 import type { ClaudeAgentSettings, SdkToolToggles, ClaudeSettingSources, VaultToolPermissions, ConfigLayerToggles } from "./types";
 
+/**
+ * SDK tools that never require permission — always enabled regardless
+ * of safe/super mode.  These are read-only or informational tools.
+ */
+export const PERMISSION_FREE_TOOLS: readonly string[] = [
+	"Read",
+	"Glob",
+	"Grep",
+	"Task",
+	"TaskOutput",
+	"TaskCreate",
+	"TaskGet",
+	"TaskList",
+	"TaskUpdate",
+	"KillShell",
+	"MCPSearch",
+	"LSP",
+	"AskUserQuestion",
+];
+
 export const DEFAULT_SDK_TOOL_TOGGLES: SdkToolToggles = {
-	Read: "deny",
 	Write: "deny",
 	Edit: "deny",
 	Bash: "deny",
-	Glob: "deny",
-	Grep: "deny",
 	Skill: "deny",
 	WebFetch: "deny",
 	WebSearch: "deny",
@@ -14,9 +31,8 @@ export const DEFAULT_SDK_TOOL_TOGGLES: SdkToolToggles = {
 };
 
 export const DEFAULT_VAULT_TOOL_PERMISSIONS: VaultToolPermissions = {
-	read_note: "ask",
 	write_note: "ask",
-	modify_note: "ask",
+	edit_note: "ask",
 };
 
 export const DEFAULT_CONFIG_LAYER_TOGGLES: ConfigLayerToggles = {
@@ -84,6 +100,9 @@ export const DEFAULT_SETTINGS: ClaudeAgentSettings = {
 
 	/* Slash commands */
 	slashCommands: [],
+
+	/* Subagents */
+	subagents: [],
 
 	/* Environment */
 	envVars: {},

@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, FileSystemAdapter } from "obsidian";
+import { Plugin, WorkspaceLeaf, FileSystemAdapter, Notice } from "obsidian";
 import process from "process";
 import { AgentService } from "./agent/agent-service";
 import { ChatView, CHAT_VIEW_TYPE } from "./ui/chat-view";
@@ -58,7 +58,8 @@ export default class ClaudeAgentPlugin extends Plugin {
 		this.agentService = new AgentService(
 			this.app,
 			() => this.resolvedSettings.merged,
-			(toolCall: ToolCall) => this.getChatView()?.requestToolApproval(toolCall) ?? Promise.resolve(false)
+			(toolCall: ToolCall) => this.getChatView()?.requestToolApproval(toolCall) ?? Promise.resolve(false),
+			pluginDir,
 		);
 
 		/* Restore session IDs */
@@ -191,6 +192,26 @@ export default class ClaudeAgentPlugin extends Plugin {
 	reloadConfigFiles(): void {
 		if (this.resolver) {
 			this.resolvedSettings = this.resolver.resolve(this.settings);
+		}
+	}
+
+	/**
+	 * Save settings and open a new conversation if the current tab has messages.
+	 * Called from the SDK Tools "Save & apply" button, since SDK Tool changes
+	 * only take effect on new sessions.
+	 */
+	async saveAndApply(): Promise<void> {
+		await this.saveSettings();
+
+		const activeTabId = this.tabManager?.getActiveTabId();
+		if (!activeTabId) return;
+
+		const activeTab = this.store?.getTab(activeTabId);
+		if (activeTab && activeTab.messages.length > 0) {
+			this.createNewTab();
+			new Notice("Settings applied. A new conversation has been started.");
+		} else {
+			new Notice("Settings applied.");
 		}
 	}
 

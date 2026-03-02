@@ -1333,6 +1333,58 @@
 	font-weight: 600;
 }
 
+/* ── SDK Tools save bar (sticky bottom) ── */
+
+.claude-agent-save-bar {
+	position: sticky;
+	bottom: 0;
+	z-index: 10;
+	display: flex;
+	justify-content: center;
+	padding: 0.5rem 0;
+	margin-top: 1rem;
+	pointer-events: none;
+}
+
+.claude-agent-save-bar-inner {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.6rem 1.2rem;
+	border-radius: var(--radius-m);
+	border: 1px solid var(--claude-agent-accent);
+	background: color-mix(in srgb, var(--claude-agent-accent) 8%, var(--background-primary));
+	box-shadow:
+		0 2px 12px color-mix(in srgb, var(--claude-agent-accent) 15%, transparent),
+		0 0 0 1px color-mix(in srgb, var(--claude-agent-accent) 10%, transparent);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	pointer-events: auto;
+}
+
+.claude-agent-save-bar-text {
+	font-size: 0.8rem;
+	color: var(--text-muted);
+}
+
+.claude-agent-save-bar-btn {
+	padding: 0.4rem 1rem;
+	border-radius: var(--radius-s);
+	border: none;
+	background: var(--claude-agent-accent);
+	color: var(--text-on-accent);
+	font-size: 0.82rem;
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: opacity 150ms ease, box-shadow 150ms ease;
+}
+
+.claude-agent-save-bar-btn:hover {
+	opacity: 0.9;
+	box-shadow: 0 1px 6px color-mix(in srgb, var(--claude-agent-accent) 40%, transparent);
+}
+
 /* ── Config file layer styles ── */
 
 .claude-agent-config-status {
