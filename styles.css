@@ -1146,3 +1146,29 @@
 		border-bottom: 1px solid var(--background-modifier-border);
 	}
 }
+
+/* ── Collapsible settings sections ── */
+
+.claude-agent-collapsible {
+	margin: 0.5em 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.claude-agent-collapsible summary {
+	cursor: pointer;
+	padding: 0.5em 0.75em;
+	font-weight: 600;
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	user-select: none;
+}
+
+.claude-agent-collapsible[open] summary {
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s) var(--radius-s) 0 0;
+}
+
+.claude-agent-collapsible > div {
+	padding: 0.25em 0.75em;
+}

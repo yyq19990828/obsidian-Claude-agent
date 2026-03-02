@@ -54,6 +54,28 @@ export type AuthMethod = "api_key" | "claude_code";
 
 export type PermissionMode = "auto_approve" | "confirm" | "plan_only";
 
+/* ── SDK access control (safe / super mode) ── */
+
+export interface SdkToolToggles {
+	Read: boolean;
+	Write: boolean;
+	Edit: boolean;
+	Bash: boolean;
+	Glob: boolean;
+	Grep: boolean;
+	Skill: boolean;
+	WebFetch: boolean;
+	WebSearch: boolean;
+	NotebookEdit: boolean;
+}
+
+export interface ClaudeSettingSources {
+	projectSettings: boolean;
+	projectMemory: boolean;
+	userSettings: boolean;
+	userMemory: boolean;
+}
+
 export type ThinkingBudget = "off" | "normal" | "extended";
 
 export interface McpServerConfig {
@@ -91,6 +113,11 @@ export interface ClaudeAgentSettings {
 	permissionMode: PermissionMode;
 	commandBlacklist: string[];
 	allowedPaths: string[];
+
+	/* SDK access (safe/super mode) */
+	safeMode: boolean;
+	sdkToolToggles: SdkToolToggles;
+	claudeSettingSources: ClaudeSettingSources;
 
 	/* Context */
 	maxContextSize: number;

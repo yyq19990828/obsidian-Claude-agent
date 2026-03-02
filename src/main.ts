@@ -2,7 +2,7 @@ import { Plugin, WorkspaceLeaf } from "obsidian";
 import { AgentService } from "./agent/agent-service";
 import { ChatView, CHAT_VIEW_TYPE } from "./ui/chat-view";
 import { ClaudeAgentSettingTab } from "./settings/settings-tab";
-import { DEFAULT_SETTINGS } from "./constants";
+import { DEFAULT_SETTINGS, DEFAULT_SDK_TOOL_TOGGLES, DEFAULT_CLAUDE_SETTING_SOURCES } from "./constants";
 import { EventBus } from "./state/event-bus";
 import { ConversationStore } from "./state/conversation-store";
 import { TabManager } from "./state/tab-manager";
@@ -127,8 +127,13 @@ export default class ClaudeAgentPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		const data = (await this.loadData()) as Record<string, unknown> | null;
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
+		const saved = ((await this.loadData()) ?? {}) as Partial<ClaudeAgentSettings>;
+		this.settings = {
+			...DEFAULT_SETTINGS,
+			...saved,
+			sdkToolToggles: { ...DEFAULT_SDK_TOOL_TOGGLES, ...saved.sdkToolToggles },
+			claudeSettingSources: { ...DEFAULT_CLAUDE_SETTING_SOURCES, ...saved.claudeSettingSources },
+		};
 	}
 
 	async saveSettings(): Promise<void> {

@@ -1,9 +1,21 @@
 import { Setting } from "obsidian";
 import type ClaudeAgentPlugin from "../main";
-import type { PermissionMode } from "../types";
+import type { PermissionMode, SdkToolToggles } from "../types";
+import { requestSuperModeConfirmation } from "../ui/modals/super-mode-confirm-modal";
 
 export class SectionSafety {
+	private plugin: ClaudeAgentPlugin;
+	private containerEl: HTMLElement;
+
 	constructor(containerEl: HTMLElement, plugin: ClaudeAgentPlugin) {
+		this.plugin = plugin;
+		this.containerEl = containerEl;
+		this.render();
+	}
+
+	private render(): void {
+		const { containerEl, plugin } = this;
+		containerEl.empty();
 		containerEl.createEl("h2", { text: "Safety" });
 
 		new Setting(containerEl)
@@ -30,6 +42,39 @@ export class SectionSafety {
 					await plugin.saveSettings();
 				});
 			});
+
+		/* ── Safe / Super mode ── */
+
+		containerEl.createEl("h3", { text: "SDK access mode" });
+
+		new Setting(containerEl)
+			.setName("Safe mode")
+			.setDesc("When enabled, only vault-scoped MCP tools are available. Disable to access SDK built-in tools and .claude/ configuration.")
+			.addToggle((toggle) => {
+				toggle.setValue(plugin.settings.safeMode).onChange(async (value) => {
+					if (!value) {
+						const confirmed = await requestSuperModeConfirmation(plugin.app);
+						if (!confirmed) {
+							toggle.setValue(true);
+							return;
+						}
+						plugin.settings.safeMode = false;
+					} else {
+						plugin.settings.safeMode = true;
+					}
+					await plugin.saveSettings();
+					this.render();
+				});
+			});
+
+		if (!plugin.settings.safeMode) {
+			this.buildSdkToolToggles(containerEl);
+			this.buildClaudeSettingSources(containerEl);
+		}
+
+		/* ── Restrictions ── */
+
+		containerEl.createEl("h3", { text: "Restrictions" });
 
 		new Setting(containerEl)
 			.setName("Command blacklist")
@@ -63,6 +108,73 @@ export class SectionSafety {
 						await plugin.saveSettings();
 					});
 				text.inputEl.rows = 4;
+			});
+	}
+
+	private buildSdkToolToggles(container: HTMLElement): void {
+		const detail = container.createEl("details", { cls: "claude-agent-collapsible" });
+		detail.createEl("summary", { text: "SDK built-in tools" });
+		const content = detail.createDiv();
+
+		const toolNames: (keyof SdkToolToggles)[] = [
+			"Read", "Write", "Edit", "Bash", "Glob",
+			"Grep", "Skill", "WebFetch", "WebSearch", "NotebookEdit",
+		];
+		for (const toolName of toolNames) {
+			new Setting(content)
+				.setName(toolName)
+				.addToggle((toggle) => {
+					toggle.setValue(this.plugin.settings.sdkToolToggles[toolName]).onChange(async (value) => {
+						this.plugin.settings.sdkToolToggles[toolName] = value;
+						await this.plugin.saveSettings();
+					});
+				});
+		}
+	}
+
+	private buildClaudeSettingSources(container: HTMLElement): void {
+		const detail = container.createEl("details", { cls: "claude-agent-collapsible" });
+		detail.createEl("summary", { text: ".claude configuration" });
+		const content = detail.createDiv();
+
+		new Setting(content)
+			.setName("Project settings")
+			.setDesc("Load .claude/settings.json and .claude/settings.local.json")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.claudeSettingSources.projectSettings).onChange(async (value) => {
+					this.plugin.settings.claudeSettingSources.projectSettings = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(content)
+			.setName("Project memory")
+			.setDesc("Allow .claude/memory/ for persistent project memory")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.claudeSettingSources.projectMemory).onChange(async (value) => {
+					this.plugin.settings.claudeSettingSources.projectMemory = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(content)
+			.setName("User settings")
+			.setDesc("Load ~/.claude/settings.json")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.claudeSettingSources.userSettings).onChange(async (value) => {
+					this.plugin.settings.claudeSettingSources.userSettings = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(content)
+			.setName("User memory")
+			.setDesc("Allow ~/.claude/memory/ for persistent user memory")
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.claudeSettingSources.userMemory).onChange(async (value) => {
+					this.plugin.settings.claudeSettingSources.userMemory = value;
+					await this.plugin.saveSettings();
+				});
 			});
 	}
 }

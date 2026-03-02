@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { ContextService } from "./context";
 import { createVaultMcpServer } from "./vault-tools";
-import type { ClaudeAgentSettings, ToolCall } from "../types";
+import type { ClaudeAgentSettings, ToolCall, SdkToolToggles } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
@@ -205,6 +205,33 @@ export class AgentService {
 		return undefined;
 	}
 
+	private buildAllowedTools(settings: ClaudeAgentSettings): string[] {
+		const tools: string[] = ["mcp__obsidian-vault__*"];
+		if (!settings.safeMode) {
+			for (const [name, enabled] of Object.entries(settings.sdkToolToggles) as [keyof SdkToolToggles, boolean][]) {
+				if (enabled) {
+					tools.push(name);
+				}
+			}
+		}
+		return tools;
+	}
+
+	private buildSettingSources(settings: ClaudeAgentSettings): ("user" | "project" | "local")[] | undefined {
+		if (settings.safeMode) {
+			return undefined;
+		}
+		const sources: ("user" | "project" | "local")[] = [];
+		const cs = settings.claudeSettingSources;
+		if (cs.projectSettings || cs.projectMemory) {
+			sources.push("project", "local");
+		}
+		if (cs.userSettings || cs.userMemory) {
+			sources.push("user");
+		}
+		return sources.length > 0 ? sources : undefined;
+	}
+
 	async *sendMessage(tabId: string, userText: string) {
 		const settings = this.getSettings();
 		const context = await ContextService.captureActiveNoteContext(this.app, settings.maxContextSize);
@@ -235,6 +262,7 @@ export class AgentService {
 			}
 
 			const sessionId = this.sessions.get(tabId);
+			const settingSources = this.buildSettingSources(settings);
 
 			const options = {
 				cwd,
@@ -246,7 +274,8 @@ export class AgentService {
 				mcpServers: {
 					"obsidian-vault": this.vaultServer,
 				},
-				allowedTools: ["mcp__obsidian-vault__*"],
+				allowedTools: this.buildAllowedTools(settings),
+				...(settingSources ? { settingSources } : {}),
 				...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
 			};
 

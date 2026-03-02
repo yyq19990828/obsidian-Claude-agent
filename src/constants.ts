@@ -1,4 +1,24 @@
-import type { ClaudeAgentSettings } from "./types";
+import type { ClaudeAgentSettings, SdkToolToggles, ClaudeSettingSources } from "./types";
+
+export const DEFAULT_SDK_TOOL_TOGGLES: SdkToolToggles = {
+	Read: false,
+	Write: false,
+	Edit: false,
+	Bash: false,
+	Glob: false,
+	Grep: false,
+	Skill: false,
+	WebFetch: false,
+	WebSearch: false,
+	NotebookEdit: false,
+};
+
+export const DEFAULT_CLAUDE_SETTING_SOURCES: ClaudeSettingSources = {
+	projectSettings: false,
+	projectMemory: false,
+	userSettings: false,
+	userMemory: false,
+};
 
 export const MODELS = [
 	{ id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
@@ -35,6 +55,11 @@ export const DEFAULT_SETTINGS: ClaudeAgentSettings = {
 	permissionMode: "confirm",
 	commandBlacklist: [],
 	allowedPaths: [],
+
+	/* SDK access (safe/super mode) */
+	safeMode: true,
+	sdkToolToggles: { ...DEFAULT_SDK_TOOL_TOGGLES },
+	claudeSettingSources: { ...DEFAULT_CLAUDE_SETTING_SOURCES },
 
 	/* Context */
 	maxContextSize: 50_000,
