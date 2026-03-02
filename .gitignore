@@ -22,6 +22,9 @@ main.js
 # obsidian
 data.json
 
+# claude worktrees (local dev config)
+.claude/worktrees/
+
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 Thumbs.db

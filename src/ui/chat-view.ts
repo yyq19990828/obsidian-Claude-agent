@@ -1,7 +1,7 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import { MessageRenderer, type AssistantBubbleState } from "./message-renderer";
 import { ToolApprovalUI } from "./tool-approval";
-import type { ToolCall } from "../types";
+import type { ToolCall, PermissionMode } from "../types";
 
 export const CHAT_VIEW_TYPE = "claude-agent-chat-view";
 
@@ -9,6 +9,8 @@ interface ChatViewConfig {
 	onSend: (text: string) => void;
 	onClear: () => void;
 	getMaxContextSize: () => number;
+	getPermissionMode: () => PermissionMode;
+	onModeToggle: () => void;
 }
 
 export class ChatView extends ItemView {
@@ -21,6 +23,7 @@ export class ChatView extends ItemView {
 	private loadingEl: HTMLElement | null = null;
 	private queueEl: HTMLElement | null = null;
 	private contextEl: HTMLElement | null = null;
+	private modeIndicatorEl: HTMLElement | null = null;
 	private activeAssistantBubble: AssistantBubbleState | null = null;
 
 	constructor(leaf: WorkspaceLeaf, config: ChatViewConfig) {
@@ -47,6 +50,11 @@ export class ChatView extends ItemView {
 
 		const headerEl = contentEl.createDiv({ cls: "claude-agent-header" });
 		headerEl.createEl("h3", { text: "Claude agent" });
+
+		this.modeIndicatorEl = headerEl.createSpan({ cls: "claude-agent-mode-indicator" });
+		this.updateModeIndicator(this.config.getPermissionMode());
+		this.registerDomEvent(this.modeIndicatorEl, "click", () => this.config.onModeToggle());
+
 		const clearButton = headerEl.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Clear conversation" } });
 		setIcon(clearButton, "trash-2");
 		this.registerDomEvent(clearButton, "click", () => this.config.onClear());
@@ -136,6 +144,13 @@ export class ChatView extends ItemView {
 	showError(content: string): void {
 		this.messageRenderer?.addError(content);
 		this.scrollToBottom();
+	}
+
+	updateModeIndicator(mode: PermissionMode): void {
+		if (!this.modeIndicatorEl) return;
+		this.modeIndicatorEl.setText(mode === "safe" ? "Safe mode" : "Super mode");
+		this.modeIndicatorEl.removeClass("claude-agent-mode-safe", "claude-agent-mode-super");
+		this.modeIndicatorEl.addClass(mode === "safe" ? "claude-agent-mode-safe" : "claude-agent-mode-super");
 	}
 
 	showLoading(isLoading: boolean): void {

@@ -363,3 +363,159 @@
 		justify-self: end;
 	}
 }
+
+/* ── Tabbed Settings Layout ── */
+
+.claude-agent-settings-tabs {
+	display: flex;
+	gap: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: 1rem;
+}
+
+.claude-agent-tab-button {
+	padding: 0.5rem 1.2rem;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	font-weight: 500;
+	cursor: pointer;
+	border-bottom: 2px solid transparent;
+	transition: color 150ms ease, border-color 150ms ease;
+}
+
+.claude-agent-tab-button:hover {
+	color: var(--text-normal);
+}
+
+.claude-agent-tab-button.is-active {
+	color: var(--text-accent);
+	border-bottom-color: var(--text-accent);
+}
+
+.claude-agent-tab-content {
+	display: none;
+}
+
+.claude-agent-tab-content.is-active {
+	display: block;
+}
+
+/* ── Apple-Style Safe Mode Toggle ── */
+
+.claude-agent-safe-toggle .checkbox-container {
+	width: 44px;
+	height: 26px;
+	border-radius: 13px;
+	background: var(--background-modifier-border);
+	transition: background 200ms ease;
+	position: relative;
+}
+
+.claude-agent-safe-toggle .checkbox-container.is-enabled {
+	background: #34c759;
+}
+
+.claude-agent-safe-toggle .checkbox-container::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	transition: transform 200ms ease;
+}
+
+.claude-agent-safe-toggle .checkbox-container.is-enabled::after {
+	transform: translateX(18px);
+}
+
+/* ── Collapsible Panels ── */
+
+.claude-agent-collapsible {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	margin-bottom: 0.75rem;
+	overflow: hidden;
+}
+
+.claude-agent-collapsible-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.6rem 0.85rem;
+	cursor: pointer;
+	background: var(--background-secondary);
+	user-select: none;
+	transition: background 150ms ease;
+}
+
+.claude-agent-collapsible-header:hover {
+	background: var(--background-secondary-alt);
+}
+
+.claude-agent-collapsible-title {
+	font-weight: 600;
+	font-size: 0.88rem;
+}
+
+.claude-agent-collapsible-chevron {
+	transition: transform 200ms ease;
+	color: var(--text-muted);
+}
+
+.claude-agent-collapsible.is-open .claude-agent-collapsible-chevron {
+	transform: rotate(90deg);
+}
+
+.claude-agent-collapsible-content {
+	display: none;
+	padding: 0.5rem 0.85rem;
+}
+
+.claude-agent-collapsible.is-open .claude-agent-collapsible-content {
+	display: block;
+}
+
+.claude-agent-collapsible.is-disabled {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* ── Mode Indicator (Chat Panel) ── */
+
+.claude-agent-mode-indicator {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.15rem 0.55rem;
+	border-radius: 10px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 150ms ease, color 150ms ease;
+	user-select: none;
+}
+
+.claude-agent-mode-safe {
+	background: color-mix(in srgb, #34c759 20%, transparent);
+	color: #34c759;
+	border: 1px solid color-mix(in srgb, #34c759 40%, transparent);
+}
+
+.claude-agent-mode-safe:hover {
+	background: color-mix(in srgb, #34c759 30%, transparent);
+}
+
+.claude-agent-mode-super {
+	background: color-mix(in srgb, #ff9500 20%, transparent);
+	color: #ff9500;
+	border: 1px solid color-mix(in srgb, #ff9500 40%, transparent);
+}
+
+.claude-agent-mode-super:hover {
+	background: color-mix(in srgb, #ff9500 30%, transparent);
+}

@@ -1,8 +1,9 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
 import { AgentService } from "./agent/agent-service";
 import { ChatView, CHAT_VIEW_TYPE } from "./ui/chat-view";
-import { ClaudeAgentSettingTab, DEFAULT_SETTINGS } from "./settings";
-import type { AgentEvent, ClaudeAgentSettings, Conversation, ToolCall } from "./types";
+import { requestSuperModeConfirmation } from "./ui/confirmation-modal";
+import { ClaudeAgentSettingTab, DEFAULT_SETTINGS, DEFAULT_SDK_TOOL_TOGGLES, DEFAULT_CLAUDE_SETTING_SOURCES } from "./settings";
+import type { AgentEvent, ClaudeAgentSettings, Conversation, PermissionMode, ToolCall } from "./types";
 
 export default class ClaudeAgentPlugin extends Plugin {
 	settings: ClaudeAgentSettings = DEFAULT_SETTINGS;
@@ -32,6 +33,10 @@ export default class ClaudeAgentPlugin extends Plugin {
 					void this.clearConversation();
 				},
 				getMaxContextSize: () => this.settings.maxContextSize,
+				getPermissionMode: () => this.settings.permissionMode,
+				onModeToggle: () => {
+					void this.handleModeToggle();
+				},
 			});
 		});
 
@@ -55,7 +60,12 @@ export default class ClaudeAgentPlugin extends Plugin {
 			},
 		});
 
-		this.addSettingTab(new ClaudeAgentSettingTab(this.app, this));
+		const settingTab = new ClaudeAgentSettingTab(this.app, this);
+		settingTab.onModeChange = () => {
+			this.agentService?.resetSession();
+			this.getChatView()?.updateModeIndicator(this.settings.permissionMode);
+		};
+		this.addSettingTab(settingTab);
 	}
 
 	onunload(): void {
@@ -63,11 +73,30 @@ export default class ClaudeAgentPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as Partial<ClaudeAgentSettings>);
+		const saved = ((await this.loadData()) ?? {}) as Partial<ClaudeAgentSettings>;
+		this.settings = {
+			...DEFAULT_SETTINGS,
+			...saved,
+			sdkToolToggles: { ...DEFAULT_SDK_TOOL_TOGGLES, ...saved.sdkToolToggles },
+			claudeSettingSources: { ...DEFAULT_CLAUDE_SETTING_SOURCES, ...saved.claudeSettingSources },
+		};
 	}
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
+	}
+
+	private async handleModeToggle(): Promise<void> {
+		if (this.settings.permissionMode === "super") {
+			this.settings.permissionMode = "safe";
+		} else {
+			const confirmed = await requestSuperModeConfirmation(this.app);
+			if (!confirmed) return;
+			this.settings.permissionMode = "super";
+		}
+		await this.saveSettings();
+		this.agentService?.resetSession();
+		this.getChatView()?.updateModeIndicator(this.settings.permissionMode);
 	}
 
 	private async activateChatView(): Promise<void> {

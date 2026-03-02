@@ -33,12 +33,37 @@ export interface NoteContext {
 
 export type AuthMethod = "api_key" | "claude_code";
 
+export type PermissionMode = "safe" | "super";
+
+export interface SdkToolToggles {
+	Read: boolean;
+	Write: boolean;
+	Edit: boolean;
+	Bash: boolean;
+	Glob: boolean;
+	Grep: boolean;
+	Skill: boolean;
+	WebFetch: boolean;
+	WebSearch: boolean;
+	NotebookEdit: boolean;
+}
+
+export interface ClaudeSettingSources {
+	projectSettings: boolean;
+	projectMemory: boolean;
+	userSettings: boolean;
+	userMemory: boolean;
+}
+
 export interface ClaudeAgentSettings {
 	apiKey: string;
 	authMethod: AuthMethod;
 	maxContextSize: number;
 	confirmFileOperations: boolean;
 	model: string;
+	permissionMode: PermissionMode;
+	sdkToolToggles: SdkToolToggles;
+	claudeSettingSources: ClaudeSettingSources;
 }
 
 export type AgentEvent =
