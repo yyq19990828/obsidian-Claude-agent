@@ -13,4 +13,6 @@
 	--claude-agent-radius-sm: 8px;
 	--claude-agent-radius-xs: 6px;
 	--claude-agent-font-size: 0.82rem;
+	--ca-diff-added-bg: color-mix(in srgb, #2ea04366 25%, transparent);
+	--ca-diff-removed-bg: color-mix(in srgb, #f8514966 25%, transparent);
 }

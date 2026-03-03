@@ -22,6 +22,12 @@ export type ContentBlock =
 	| { type: "text"; text: string }
 	| { type: "tool_call"; toolCallId: string };
 
+export interface UsageStats {
+	durationMs: number;
+	estimatedInputTokens?: number;
+	estimatedOutputTokens?: number;
+}
+
 export interface Message {
 	role: MessageRole;
 	content: string;
@@ -29,6 +35,22 @@ export interface Message {
 	toolCalls?: ToolCall[];
 	thinkingBlocks?: ThinkingBlock[];
 	contentBlocks?: ContentBlock[];
+	usageStats?: UsageStats;
+}
+
+/* ── Vault file cache ── */
+
+export interface VaultFileEntry {
+	path: string;
+	basename: string;
+	extension: string;
+}
+
+/* ── Fork ── */
+
+export interface ForkSource {
+	sourceTabId: string;
+	messageIndex: number;
 }
 
 /* ── Note context ── */
@@ -200,6 +222,8 @@ export interface ConversationTab {
 	status: TabStatus;
 	messages: Message[];
 	sessionId?: string;
+	previousSessionIds?: string[];
+	forkSource?: ForkSource;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -258,7 +282,12 @@ export interface EventMap {
 	"agent:complete": { tabId: string; content: string; toolCalls?: ToolCall[]; thinkingBlocks?: ThinkingBlock[] };
 	"agent:error": { tabId: string; error: string };
 	"agent:loading": { tabId: string; loading: boolean };
+	"conversation:rewound": { tabId: string; removedCount: number };
+	"conversation:forked": { sourceTabId: string; newTabId: string };
 	"context:chips-changed": FileContextChip[];
+	"context:file-index-ready": void;
+	"session:expired": { tabId: string };
+	"session:resumed": { tabId: string };
 	"status:tool-active": { toolName: string; status: string };
 	"status:bash-output": string;
 	"sidebar:toggle": boolean;

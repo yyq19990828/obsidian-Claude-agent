@@ -1,8 +1,10 @@
 import { setIcon } from "obsidian";
+import { MentionAutocomplete, type MentionSuggestion, type MentionAutocompleteConfig } from "./mention-autocomplete";
 
 export interface InputAreaConfig {
-	onSend: (text: string) => void;
+	onSend: (text: string, mentions?: MentionSuggestion[]) => void;
 	onStop: () => void;
+	mentionConfig?: MentionAutocompleteConfig;
 }
 
 export class InputArea {
@@ -13,6 +15,8 @@ export class InputArea {
 	private hintEl: HTMLElement;
 	readonly bottomBarEl: HTMLElement;
 	private _isStreaming = false;
+	private mentionAutocomplete: MentionAutocomplete | null = null;
+	private contextCounterEl: HTMLElement | null = null;
 
 	constructor(parentEl: HTMLElement, private readonly config: InputAreaConfig) {
 		this.containerEl = parentEl.createDiv({ cls: "claude-agent-input-container" });
@@ -54,14 +58,47 @@ export class InputArea {
 		});
 
 		this.textareaEl.addEventListener("input", () => this.autoResize());
+
+		/* Mention autocomplete */
+		if (config.mentionConfig) {
+			this.mentionAutocomplete = new MentionAutocomplete(
+				this.containerEl,
+				this.textareaEl,
+				config.mentionConfig,
+			);
+		}
 	}
 
 	private handleSend(): void {
 		const text = this.textareaEl.value.trim();
 		if (!text || this._isStreaming) return;
+		const mentions = this.mentionAutocomplete?.getSelectedMentions();
 		this.textareaEl.value = "";
 		this.autoResize();
-		this.config.onSend(text);
+		this.mentionAutocomplete?.clearMentions();
+		this.config.onSend(text, mentions);
+	}
+
+	/** Update context counter display (tokens used / max). */
+	updateContextCounter(usedTokens: number, maxTokens: number): void {
+		if (!this.contextCounterEl) {
+			this.contextCounterEl = this.bottomBarEl.createDiv({ cls: "claude-agent-context-counter" });
+			/* Insert before the spacer */
+			const spacer = this.bottomBarEl.querySelector(".claude-agent-bottom-bar-spacer");
+			if (spacer) spacer.before(this.contextCounterEl);
+		}
+
+		const formatted = `~${this.formatCount(usedTokens)} / ${this.formatCount(maxTokens)}`;
+		this.contextCounterEl.setText(formatted);
+
+		const ratio = usedTokens / maxTokens;
+		this.contextCounterEl.classList.toggle("is-warning", ratio >= 0.8 && ratio < 0.95);
+		this.contextCounterEl.classList.toggle("is-danger", ratio >= 0.95);
+	}
+
+	private formatCount(n: number): string {
+		if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+		return String(n);
 	}
 
 	setStreaming(streaming: boolean): void {
@@ -81,6 +118,7 @@ export class InputArea {
 	}
 
 	destroy(): void {
+		this.mentionAutocomplete?.destroy();
 		this.containerEl.remove();
 	}
 }

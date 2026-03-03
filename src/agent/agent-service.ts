@@ -8,6 +8,7 @@ import { extractAssistantText, extractToolCalls, extractToolResults, extractText
 import { resolveClaudeExecutablePath } from "./executable-resolver";
 import { buildAllowedTools, buildDisallowedTools, buildAvailableTools } from "./tool-permission";
 import { buildSdkOptions } from "./sdk-options-builder";
+import type { EventBus } from "../state/event-bus";
 import type { ClaudeAgentSettings, ToolCall, ThinkingBlock, ToolPermission } from "../types";
 
 function buildPrompt(userText: string, noteContext: Awaited<ReturnType<typeof ContextService.captureActiveNoteContext>>, maxSize: number): string {
@@ -46,6 +47,7 @@ export class AgentService {
 		private readonly getSettings: () => ClaudeAgentSettings,
 		private readonly requestToolApproval: (toolCall: ToolCall) => Promise<boolean>,
 		private readonly pluginDir?: string,
+		private readonly eventBus?: EventBus,
 	) {}
 
 	/** Invalidate cached build results so they are rebuilt on next message. */
@@ -163,7 +165,8 @@ export class AgentService {
 		return Object.keys(agents).length > 0 ? agents : undefined;
 	}
 
-	async *sendMessage(tabId: string, userText: string) {
+	// eslint-disable-next-line no-undef
+	async *sendMessage(tabId: string, userText: string): AsyncGenerator<Record<string, unknown>> {
 		const settings = this.getSettings();
 		const context = await ContextService.captureActiveNoteContext(this.app, settings.maxContextSize);
 		const prompt = buildPrompt(userText, context, settings.maxContextSize);
@@ -347,13 +350,35 @@ export class AgentService {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			const invalidAuth = /auth|api key|authentication|401|forbidden/i.test(message);
-			yield {
-				type: "result",
-				success: false,
-				error: invalidAuth
-					? "Authentication failed. Please verify your API key in Claude Agent settings or switch to Claude Code subscription mode."
-					: message,
-			};
+			const sessionExpired = /session.*(expired|not found|invalid)|invalid.*session/i.test(message);
+
+			if (sessionExpired && this.sessions.has(tabId)) {
+				/* Session expired — clear and emit event */
+				this.sessions.delete(tabId);
+				this.eventBus?.emit("session:expired", { tabId });
+
+				/* Auto-retry once without resume */
+				try {
+					yield* this.sendMessage(tabId, userText);
+					this.eventBus?.emit("session:resumed", { tabId });
+					return;
+				} catch (retryError) {
+					const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+					yield {
+						type: "result",
+						success: false,
+						error: `Session recovery failed: ${retryMsg}`,
+					};
+				}
+			} else {
+				yield {
+					type: "result",
+					success: false,
+					error: invalidAuth
+						? "Authentication failed. Please verify your API key in Claude Agent settings or switch to Claude Code subscription mode."
+						: message,
+				};
+			}
 		} finally {
 			this.activeAbortControllers.delete(tabId);
 		}

@@ -99,6 +99,17 @@
 	margin-bottom: 0;
 }
 
+/* ── Usage Stats ── */
+
+.claude-agent-usage-stats {
+	font-size: 0.72rem;
+	color: var(--text-faint);
+	margin-top: 0.35rem;
+	padding-top: 0.25rem;
+	opacity: 0.7;
+	user-select: none;
+}
+
 /* ── Loading & Queue ── */
 
 .claude-agent-loading {

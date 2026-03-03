@@ -1,8 +1,9 @@
-import { setIcon } from "obsidian";
+import { Menu, setIcon } from "obsidian";
 
 export interface MessageActionHandlers {
 	onCopyRaw: (rawMarkdown: string) => void;
 	onRegenerate: (sourceUserText: string) => void;
+	onFork?: (messageIndex: number) => void;
 }
 
 export function renderAssistantActions(
@@ -10,6 +11,7 @@ export function renderAssistantActions(
 	rawMarkdown: string,
 	sourceUserText: string,
 	actions: MessageActionHandlers,
+	messageIndex?: number,
 ): void {
 	const actionBar = rowEl.createDiv({ cls: "claude-agent-message-actions claude-agent-assistant-actions" });
 	const copyButton = actionBar.createEl("button", {
@@ -33,6 +35,28 @@ export function renderAssistantActions(
 	});
 	setIcon(regenerateButton, "refresh-cw");
 	regenerateButton.addEventListener("click", () => actions.onRegenerate(sourceUserText));
+
+	/* Fork button */
+	if (actions.onFork && messageIndex != null) {
+		const forkButton = actionBar.createEl("button", {
+			cls: "claude-agent-message-action-button",
+			attr: {
+				type: "button",
+				"aria-label": "Fork conversation from here",
+				"data-tooltip": "Fork",
+			},
+		});
+		setIcon(forkButton, "git-branch");
+		forkButton.addEventListener("click", (e) => {
+			const menu = new Menu();
+			menu.addItem((item) => {
+				item.setTitle("Fork to new tab")
+					.setIcon("plus")
+					.onClick(() => actions.onFork?.(messageIndex));
+			});
+			menu.showAtMouseEvent(e);
+		});
+	}
 }
 
 export function renderUserActions(

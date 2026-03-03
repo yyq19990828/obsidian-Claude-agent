@@ -1,0 +1,104 @@
+/* ── Subagent Card ── */
+
+.claude-agent-subagent-card {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--claude-agent-radius-sm);
+	margin: 0.3rem 0;
+	overflow: hidden;
+}
+
+.claude-agent-subagent-header {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.6rem;
+	background: color-mix(in srgb, var(--background-secondary) 50%, transparent);
+}
+
+.claude-agent-subagent-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+	color: var(--interactive-accent);
+	flex-shrink: 0;
+}
+
+.claude-agent-subagent-icon svg {
+	width: 12px;
+	height: 12px;
+}
+
+.claude-agent-subagent-name {
+	font-size: 0.78rem;
+	font-weight: 500;
+	color: var(--text-normal);
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-subagent-status {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+.claude-agent-subagent-status svg {
+	width: 12px;
+	height: 12px;
+}
+
+.claude-agent-subagent-status.is-complete {
+	color: #3fb950;
+}
+
+.claude-agent-subagent-status.is-failed {
+	color: #f85149;
+}
+
+.claude-agent-subagent-status.is-running {
+	color: var(--text-muted);
+}
+
+.claude-agent-subagent-spinner {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	border: 2px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+	border-top-color: var(--text-muted);
+	border-radius: 50%;
+	animation: claude-agent-spin 0.8s linear infinite;
+}
+
+@keyframes claude-agent-spin {
+	to { transform: rotate(360deg); }
+}
+
+.claude-agent-subagent-clickable {
+	cursor: pointer;
+}
+
+.claude-agent-subagent-preview,
+.claude-agent-subagent-result {
+	padding: 0.4rem 0.6rem;
+	font-size: 0.72rem;
+	color: var(--text-muted);
+	border-top: 1px solid var(--background-modifier-border);
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.claude-agent-subagent-preview.is-collapsed,
+.claude-agent-subagent-result.is-collapsed {
+	display: none;
+}

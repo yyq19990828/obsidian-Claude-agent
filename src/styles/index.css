@@ -22,12 +22,16 @@
 @import "./components/file-chips.css";
 @import "./components/sidebar.css";
 @import "./components/status-panel.css";
+@import "./components/inline-diff.css";
+@import "./components/mention-autocomplete.css";
 
 /* Features */
 @import "./features/system-messages.css";
 @import "./features/inline-edit.css";
 @import "./features/diff-view.css";
 @import "./features/tool-approval.css";
+@import "./features/subagent-card.css";
+@import "./features/ask-user-card.css";
 
 /* Settings */
 @import "./settings/settings-layout.css";

@@ -1,0 +1,119 @@
+/* ── Ask User Card ── */
+
+.claude-agent-ask-user-card {
+	border: 1px solid var(--interactive-accent);
+	border-radius: var(--claude-agent-radius-sm);
+	padding: 0.6rem;
+	margin: 0.4rem 0;
+	background: color-mix(in srgb, var(--interactive-accent) 5%, var(--background-primary));
+}
+
+.claude-agent-ask-user-card.is-answered {
+	opacity: 0.7;
+	border-color: var(--background-modifier-border);
+}
+
+.claude-agent-ask-user-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.4rem;
+	margin-bottom: 0.5rem;
+}
+
+.claude-agent-ask-user-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	color: var(--interactive-accent);
+}
+
+.claude-agent-ask-user-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.claude-agent-ask-user-question {
+	font-size: 0.82rem;
+	color: var(--text-normal);
+	line-height: 1.4;
+}
+
+.claude-agent-ask-user-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin-bottom: 0.4rem;
+}
+
+.claude-agent-ask-user-option {
+	padding: 0.3rem 0.6rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--claude-agent-radius-xs);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: 0.78rem;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.claude-agent-ask-user-option:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.claude-agent-ask-user-input-row {
+	display: flex;
+	gap: 0.3rem;
+	align-items: center;
+}
+
+.claude-agent-ask-user-input {
+	flex: 1;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--claude-agent-radius-xs);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 0.78rem;
+}
+
+.claude-agent-ask-user-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.claude-agent-ask-user-submit {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: var(--claude-agent-radius-xs);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	cursor: pointer;
+}
+
+.claude-agent-ask-user-submit svg {
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-ask-user-skip {
+	display: block;
+	margin-top: 0.3rem;
+	padding: 0.2rem 0.4rem;
+	border: none;
+	background: none;
+	color: var(--text-faint);
+	font-size: 0.72rem;
+	cursor: pointer;
+}
+
+.claude-agent-ask-user-skip:hover {
+	color: var(--text-muted);
+}

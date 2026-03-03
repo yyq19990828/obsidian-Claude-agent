@@ -1,8 +1,9 @@
 import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
-import type { ToolCall, PermissionMode, ThinkingBudget } from "../types";
+import type { ToolCall, PermissionMode, ThinkingBudget, UsageStats } from "../types";
 import type { EventBus } from "../state/event-bus";
 import type { TabManager } from "../state/tab-manager";
 import type { ConversationStore } from "../state/conversation-store";
+import type { MentionSuggestion } from "./components/mention-autocomplete";
 import { HeaderBar } from "./components/header-bar";
 import { MessageList } from "./components/message-list";
 import { InputToolbar } from "./components/input-toolbar";
@@ -16,14 +17,17 @@ export interface ChatViewDeps {
 	eventBus: EventBus;
 	tabManager: TabManager;
 	store: ConversationStore;
-	onSend: (text: string, tabId: string) => void;
+	onSend: (text: string, tabId: string, mentions?: MentionSuggestion[]) => void;
 	onStop: (tabId: string) => void;
 	onClear: (tabId: string) => void;
 	onNewTab: () => void;
 	onCloseTab: (tabId: string) => void;
 	onSwitchTab: (tabId: string) => void;
 	onOpenSettings: () => void;
+	onFork?: (tabId: string, messageIndex: number) => void;
 	getMaxContextSize: () => number;
+	getFileSuggestions?: (query: string) => MentionSuggestion[];
+	getAgentSuggestions?: (query: string) => MentionSuggestion[];
 	getSettings: () => { model: string; thinkingBudget: ThinkingBudget; permissionMode: PermissionMode; showDetailedThinking: boolean; showDetailedTools: boolean };
 	onModelChange: (model: string) => void;
 	onThinkingChange: (budget: ThinkingBudget) => void;
@@ -95,10 +99,18 @@ export class ChatView extends ItemView {
 				const tabId = this.deps.tabManager.getActiveTabId();
 				if (tabId) this.deps.onSend(userText, tabId);
 			},
+			onFork: (messageIndex) => {
+				if (this.deps.onFork) {
+					const tabId = this.deps.tabManager.getActiveTabId();
+					if (tabId) this.deps.onFork(tabId, messageIndex);
+				}
+			},
 			getSettings: () => {
 				const s = this.deps.getSettings();
 				return { showDetailedThinking: s.showDetailedThinking, showDetailedTools: s.showDetailedTools };
 			},
+			eventBus: this.deps.eventBus,
+			store: this.deps.store,
 		});
 
 		/* Queue indicator */
@@ -107,19 +119,24 @@ export class ChatView extends ItemView {
 
 		/* ── Input container (chips + textarea + hint + bottom bar) ── */
 		this.inputArea = new InputArea(this.mainContentEl, {
-			onSend: (text) => {
+			onSend: (text, mentions) => {
 				/* No active tab → always create a new one (fresh start or after "new conversation") */
 				let tabId = this.deps.tabManager.getActiveTabId();
 				if (!tabId) {
 					const tab = this.deps.tabManager.createAndActivate();
 					tabId = tab.id;
 				}
-				this.deps.onSend(text, tabId);
+				this.deps.onSend(text, tabId, mentions);
 			},
 			onStop: () => {
 				const tabId = this.deps.tabManager.getActiveTabId();
 				if (tabId) this.deps.onStop(tabId);
 			},
+			mentionConfig: this.deps.getFileSuggestions ? {
+				getFileSuggestions: (query) => this.deps.getFileSuggestions?.(query) ?? [],
+				getAgentSuggestions: (query) => this.deps.getAgentSuggestions?.(query) ?? [],
+				onSelect: () => { /* no-op, mentions tracked in autocomplete */ },
+			} : undefined,
 		});
 
 		/* Active tab chips — show open workspace tabs as toggleable context */
@@ -193,8 +210,8 @@ export class ChatView extends ItemView {
 		this.messageList?.appendAssistantToken(token, tabId);
 	}
 
-	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = [], tabId?: string): Promise<void> {
-		await this.messageList?.finishAssistantMessage(content, toolCalls, tabId);
+	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = [], tabId?: string, usageStats?: UsageStats): Promise<void> {
+		await this.messageList?.finishAssistantMessage(content, toolCalls, tabId, usageStats);
 	}
 
 	/* ── Thinking stream ── */

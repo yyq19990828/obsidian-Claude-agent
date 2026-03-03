@@ -1,12 +1,17 @@
 import type { App, Component } from "obsidian";
 import { MessageRenderer, type AssistantBubbleState, type RendererSettings } from "../message-renderer";
 import { ToolApprovalUI } from "../tool-approval";
-import type { ToolCall, Message } from "../../types";
+import type { EventBus } from "../../state/event-bus";
+import type { ConversationStore } from "../../state/conversation-store";
+import type { ToolCall, Message, UsageStats } from "../../types";
 
 export interface MessageListConfig {
 	onCopyRaw: (rawMarkdown: string) => void;
 	onRegenerate: (sourceUserText: string) => void;
+	onFork?: (messageIndex: number) => void;
 	getSettings: () => RendererSettings;
+	eventBus?: EventBus;
+	store?: ConversationStore;
 }
 
 /**
@@ -35,6 +40,8 @@ export class MessageList {
 	private scrollThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 	/** Welcome screen shown when no tabs exist. */
 	private welcomeEl: HTMLElement | null = null;
+	private config: MessageListConfig;
+	private eventCleanupFns: (() => void)[] = [];
 
 	constructor(
 		parentEl: HTMLElement,
@@ -42,6 +49,7 @@ export class MessageList {
 		component: Component,
 		config: MessageListConfig
 	) {
+		this.config = config;
 		/* Permanent wrapper — flex:1, holds all tab containers */
 		this.wrapperEl = parentEl.createDiv({ cls: "claude-agent-messages-wrapper" });
 
@@ -51,8 +59,23 @@ export class MessageList {
 		this.renderer = new MessageRenderer(app, component, tempContainer, {
 			onCopyRaw: config.onCopyRaw,
 			onRegenerate: config.onRegenerate,
+			onFork: config.onFork,
 		}, config.getSettings);
 		this.toolApprovalUI = new ToolApprovalUI(tempContainer);
+
+		/* Listen for rewind events to re-render */
+		if (config.eventBus && config.store) {
+			const onRewound = (evt: { tabId: string; removedCount: number }) => {
+				const tab = config.store?.getTab(evt.tabId);
+				if (tab) {
+					/* Destroy cached container and re-render */
+					this.destroyTab(evt.tabId);
+					void this.switchToTab(evt.tabId, tab.messages);
+				}
+			};
+			config.eventBus.on("conversation:rewound", onRewound);
+			this.eventCleanupFns.push(() => config.eventBus?.off("conversation:rewound", onRewound));
+		}
 	}
 
 	/* ── Tab lifecycle ── */
@@ -104,7 +127,8 @@ export class MessageList {
 		if (messages.length === 0) {
 			this.renderer.addSystemMessage("Welcome. Configure authentication in settings, then send a message.");
 		} else {
-			for (const msg of messages) {
+			for (let i = 0; i < messages.length; i++) {
+				const msg = messages[i]!;
 				if (msg.role === "user") {
 					await this.renderer.addUserMessage(msg.content);
 				} else if (msg.role === "assistant") {
@@ -113,6 +137,8 @@ export class MessageList {
 						msg.toolCalls ?? [],
 						msg.thinkingBlocks ?? [],
 						msg.contentBlocks,
+						msg.usageStats,
+						i,
 					);
 				} else if (msg.role === "system") {
 					this.renderer.addSystemMessage(msg.content);
@@ -163,12 +189,12 @@ export class MessageList {
 		if (targetTab === this.activeTabId) this.scrollToBottomThrottled();
 	}
 
-	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = [], tabId?: string): Promise<void> {
+	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = [], tabId?: string, usageStats?: UsageStats): Promise<void> {
 		const targetTab = tabId ? tabId : this.findStreamingTab();
 		if (!targetTab) return;
 		const bubble = this.tabBubbles.get(targetTab);
 		if (!bubble) return;
-		await this.renderer.finishAssistantMessage(bubble, content, toolCalls);
+		await this.renderer.finishAssistantMessage(bubble, content, toolCalls, usageStats);
 		this.tabBubbles.delete(targetTab);
 		this.streamingTabs.delete(targetTab);
 		if (targetTab === this.activeTabId) this.scrollToBottom();
@@ -266,6 +292,8 @@ export class MessageList {
 
 	destroy(): void {
 		if (this.scrollThrottleTimer) clearTimeout(this.scrollThrottleTimer);
+		for (const cleanup of this.eventCleanupFns) cleanup();
+		this.eventCleanupFns = [];
 		this.wrapperEl.remove();
 		this.tabContainers.clear();
 		this.tabBubbles.clear();

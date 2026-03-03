@@ -1,0 +1,77 @@
+/* ── Mention Autocomplete ── */
+
+.claude-agent-mention-dropdown {
+	position: absolute;
+	bottom: 100%;
+	left: 0;
+	right: 0;
+	max-height: 240px;
+	overflow-y: auto;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--claude-agent-radius-sm);
+	box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+	z-index: 100;
+	margin-bottom: 4px;
+}
+
+.claude-agent-mention-item {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.35rem 0.6rem;
+	cursor: pointer;
+	font-size: 0.78rem;
+}
+
+.claude-agent-mention-item:hover,
+.claude-agent-mention-item.is-selected {
+	background: var(--background-modifier-hover);
+}
+
+.claude-agent-mention-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	color: var(--text-muted);
+}
+
+.claude-agent-mention-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-mention-label {
+	flex-shrink: 0;
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.claude-agent-mention-path {
+	color: var(--text-faint);
+	font-size: 0.72rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ── Context counter ── */
+
+.claude-agent-context-counter {
+	font-size: 0.7rem;
+	color: var(--text-faint);
+	padding: 0 0.3rem;
+	user-select: none;
+	white-space: nowrap;
+}
+
+.claude-agent-context-counter.is-warning {
+	color: var(--color-orange);
+}
+
+.claude-agent-context-counter.is-danger {
+	color: var(--color-red);
+}

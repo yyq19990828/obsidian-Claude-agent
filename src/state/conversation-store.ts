@@ -116,8 +116,69 @@ export class ConversationStore {
 	setSessionId(tabId: string, sessionId: string): void {
 		const tab = this.tabs.get(tabId);
 		if (tab) {
+			/* Track previous session IDs for resume */
+			if (tab.sessionId && tab.sessionId !== sessionId) {
+				if (!tab.previousSessionIds) tab.previousSessionIds = [];
+				tab.previousSessionIds.push(tab.sessionId);
+				if (tab.previousSessionIds.length > 10) {
+					tab.previousSessionIds = tab.previousSessionIds.slice(-10);
+				}
+			}
 			tab.sessionId = sessionId;
 		}
+	}
+
+	/**
+	 * Remove the last `count` turns (user+assistant pairs) from a conversation.
+	 * Resets sessionId so the next send starts a fresh session.
+	 * Returns the number of turns actually removed.
+	 */
+	rewindMessages(tabId: string, count: number): number {
+		const tab = this.tabs.get(tabId);
+		if (!tab || tab.messages.length === 0 || count <= 0) return 0;
+
+		let removed = 0;
+		for (let i = 0; i < count; i++) {
+			if (tab.messages.length === 0) break;
+
+			/* Remove last assistant message */
+			const lastMsg = tab.messages[tab.messages.length - 1];
+			if (lastMsg && lastMsg.role === "assistant") {
+				tab.messages.pop();
+			}
+			/* Remove preceding user message */
+			const prevMsg = tab.messages.length > 0 ? tab.messages[tab.messages.length - 1] : undefined;
+			if (prevMsg && prevMsg.role === "user") {
+				tab.messages.pop();
+			}
+			removed++;
+		}
+
+		/* Reset session so next send starts fresh */
+		tab.sessionId = undefined;
+		tab.updatedAt = Date.now();
+		void this.save();
+		return removed;
+	}
+
+	/**
+	 * Create a new tab from an existing set of messages (used by fork).
+	 */
+	createTabFromMessages(messages: Message[], title?: string, forkSource?: { sourceTabId: string; messageIndex: number }): ConversationTab {
+		const tab: ConversationTab = {
+			id: crypto.randomUUID(),
+			title: title ?? "Forked conversation",
+			status: "idle",
+			messages: messages.map(m => ({ ...m })),
+			sessionId: undefined,
+			forkSource: forkSource,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		};
+		this.tabs.set(tab.id, tab);
+		this.eventBus.emit("tab:created", tab);
+		void this.save();
+		return tab;
 	}
 
 	getSessionId(tabId: string): string | undefined {

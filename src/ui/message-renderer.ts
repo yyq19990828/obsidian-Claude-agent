@@ -3,7 +3,7 @@ import { ThinkingBlockRenderer } from "./components/thinking-block";
 import { renderToolCallCard } from "./components/tool-call-card";
 import { renderAssistantActions, renderUserActions } from "./components/message-actions";
 import type { MessageActionHandlers } from "./components/message-actions";
-import type { ContentBlock, ToolCall, ThinkingBlock } from "../types";
+import type { ContentBlock, ToolCall, ThinkingBlock, UsageStats } from "../types";
 
 interface RendererSettings {
 	showDetailedThinking: boolean;
@@ -33,6 +33,7 @@ interface AssistantBubbleState {
 	typingEl: HTMLElement | null;
 	thinkingBlockEl: HTMLElement | null;
 	renderedToolIds: Set<string>;
+	messageIndex?: number;
 }
 
 export class MessageRenderer {
@@ -198,7 +199,8 @@ export class MessageRenderer {
 	async finishAssistantMessage(
 		state: AssistantBubbleState,
 		content: string,
-		toolCalls: ToolCall[] = []
+		toolCalls: ToolCall[] = [],
+		usageStats?: UsageStats,
 	): Promise<void> {
 		/* Remove typing indicator if still present */
 		if (state.typingEl) {
@@ -228,9 +230,14 @@ export class MessageRenderer {
 			}
 		}
 
+		/* Usage stats footer */
+		if (usageStats) {
+			this.renderUsageStats(state.wrapperEl, usageStats);
+		}
+
 		/* Use provided content (accumulated across all turns) for action buttons */
 		const displayText = content || state.fullText;
-		renderAssistantActions(state.rowEl, displayText, state.sourceUserText, this.actions);
+		renderAssistantActions(state.rowEl, displayText, state.sourceUserText, this.actions, state.messageIndex);
 	}
 
 	async restoreAssistantMessage(
@@ -238,6 +245,8 @@ export class MessageRenderer {
 		toolCalls: ToolCall[] = [],
 		thinkingBlocks: ThinkingBlock[] = [],
 		contentBlocks?: ContentBlock[],
+		usageStats?: UsageStats,
+		messageIndex?: number,
 	): Promise<void> {
 		const rowEl = this.containerEl.createDiv({ cls: "claude-agent-message-row claude-agent-message-row-assistant" });
 		const wrapperEl = rowEl.createDiv({ cls: "claude-agent-message claude-agent-message-assistant" });
@@ -277,7 +286,12 @@ export class MessageRenderer {
 			}
 		}
 
-		renderAssistantActions(rowEl, content, "", this.actions);
+		/* Usage stats footer */
+		if (usageStats) {
+			this.renderUsageStats(wrapperEl, usageStats);
+		}
+
+		renderAssistantActions(rowEl, content, "", this.actions, messageIndex);
 	}
 
 	addSystemMessage(content: string): void {
@@ -289,6 +303,32 @@ export class MessageRenderer {
 		const el = this.containerEl.createDiv({ cls: "claude-agent-message claude-agent-message-error" });
 		setIcon(el.createSpan({ cls: "claude-agent-error-icon" }), "alert-triangle");
 		el.createSpan({ text: content });
+	}
+
+	private renderUsageStats(parentEl: HTMLElement, stats: UsageStats): void {
+		const el = parentEl.createDiv({ cls: "claude-agent-usage-stats" });
+		const parts: string[] = [];
+
+		/* Duration */
+		const sec = (stats.durationMs / 1000).toFixed(1);
+		parts.push(`${sec}s`);
+
+		/* Token estimates */
+		if (stats.estimatedInputTokens != null) {
+			parts.push(`~${this.formatTokenCount(stats.estimatedInputTokens)} in`);
+		}
+		if (stats.estimatedOutputTokens != null) {
+			parts.push(`~${this.formatTokenCount(stats.estimatedOutputTokens)} out`);
+		}
+
+		el.setText(parts.join(" · "));
+	}
+
+	private formatTokenCount(count: number): string {
+		if (count >= 1000) {
+			return (count / 1000).toFixed(1) + "k";
+		}
+		return String(count);
 	}
 
 	private async renderMarkdown(targetEl: HTMLElement, markdown: string): Promise<void> {

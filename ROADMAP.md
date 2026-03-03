@@ -4,7 +4,7 @@ Target reference: [Claudian](https://github.com/YishenTu/claudian) (v1.3.67)
 
 ---
 
-## Phase 0 — 代码解耦与模块化 (首要任务)
+## Phase 0 — 代码解耦与模块化 (已完成)
 
 代码文件逐渐臃肿，需要先结构重构，为后续功能开发打好基础。
 
@@ -12,52 +12,52 @@ Target reference: [Claudian](https://github.com/YishenTu/claudian) (v1.3.67)
 
 `sendMessage()` 超过 270 行，混合了消息解析、权限管理、缓存、SDK 选项构建等职责。
 
-- [ ] 提取 `src/agent/message-extractor.ts` — 10 个 SDK 消息解析函数 (extractTextDelta, extractThinkingDelta, extractToolCalls, extractToolResults, extractAssistantText)
-- [ ] 提取 `src/agent/executable-resolver.ts` — Claude 可执行文件路径解析 (5 种候选策略)
-- [ ] 提取 `src/agent/sdk-options-builder.ts` — SDK query options 组装 (env, permissionMode, canUseTool, mcpServers)
-- [ ] 提取 `src/agent/tool-permission.ts` — 工具权限过滤 (buildAllowedTools, buildDisallowedTools, buildAvailableTools, canUseTool callback)
-- [ ] agent-service.ts 精简为编排器：cache → options → query → yield events
+- [x] 提取 `src/agent/message-extractor.ts` — 10 个 SDK 消息解析函数 (extractTextDelta, extractThinkingDelta, extractToolCalls, extractToolResults, extractAssistantText)
+- [x] 提取 `src/agent/executable-resolver.ts` — Claude 可执行文件路径解析 (5 种候选策略)
+- [x] 提取 `src/agent/sdk-options-builder.ts` — SDK query options 组装 (env, permissionMode, canUseTool, mcpServers)
+- [x] 提取 `src/agent/tool-permission.ts` — 工具权限过滤 (buildAllowedTools, buildDisallowedTools, buildAvailableTools, canUseTool callback)
+- [x] agent-service.ts 精简为编排器：cache → options → query → yield events
 
 ### 0.2 拆分 main.ts (407 行 → ~200 行)
 
 main.ts 应只负责插件生命周期，不应包含消息处理和事件分发。
 
-- [ ] 提取 `src/services/message-processor.ts` — processMessage 循环 + agent 事件分发
-- [ ] 提取 `src/services/message-queue.ts` — 消息队列管理 (loadingTabs, queues Map)
-- [ ] 提取 `src/settings/settings-migrator.ts` — loadSettings 中的向后兼容迁移
-- [ ] main.ts 保留：onload, onunload, addCommand, view 注册, saveSettings
+- [x] 提取 `src/services/message-processor.ts` — processMessage 循环 + agent 事件分发
+- [x] 提取 `src/services/message-queue.ts` — 消息队列管理 (loadingTabs, queues Map)
+- [x] 提取 `src/settings/settings-migrator.ts` — loadSettings 中的向后兼容迁移
+- [x] main.ts 保留：onload, onunload, addCommand, view 注册, saveSettings
 
 ### 0.3 拆分 message-renderer.ts (380 行 → ~200 行)
 
 渲染逻辑、流式状态、工具卡片渲染混在一起。
 
-- [ ] 提取 `src/ui/components/tool-call-renderer.ts` — 工具调用卡片 (renderToolCallCard, getToolIcon, truncatePath)
-- [ ] 提取 `src/ui/components/message-actions.ts` — 消息操作栏 (复制、重新生成按钮)
-- [ ] message-renderer.ts 保留：消息气泡结构、流式 token 处理、markdown 渲染
+- [x] 提取 `src/ui/components/tool-call-renderer.ts` — 工具调用卡片 (renderToolCallCard, getToolIcon, truncatePath)
+- [x] 提取 `src/ui/components/message-actions.ts` — 消息操作栏 (复制、重新生成按钮)
+- [x] message-renderer.ts 保留：消息气泡结构、流式 token 处理、markdown 渲染
 
 ### 0.4 拆分 section-memory-config.ts (760 行 → ~300 行)
 
 settings 中最大的文件，混合了文件 I/O、Modal、Schema 验证。
 
-- [ ] 提取 `src/settings/modals/config-file-confirm-modal.ts` — 确认对话框
-- [ ] 提取 `src/settings/memory-file-manager.ts` — CLAUDE.md / .claude-agent.json 文件读写
-- [ ] section-memory-config.ts 保留：纯 UI 渲染
+- [x] 提取 `src/settings/modals/config-file-confirm-modal.ts` — 确认对话框
+- [x] 提取 `src/settings/memory-file-manager.ts` — CLAUDE.md / .claude-agent.json 文件读写
+- [x] section-memory-config.ts 保留：纯 UI 渲染
 
 ### 0.5 拆分 types.ts — ClaudeAgentSettings 分组
 
 ClaudeAgentSettings 包含 20+ 不相关字段，被几乎所有文件导入。
 
-- [ ] 创建分组接口：GeneralSettings, AuthSettings, ModelSettings, SafetySettings, ToolSettings, McpSettings, ConfigLayerSettings
-- [ ] ClaudeAgentSettings 改为交叉类型组合 (`GeneralSettings & AuthSettings & ...`)，向后兼容
-- [ ] 各模块按需导入具体分组，减少耦合面
+- [x] 创建分组接口：GeneralSettings, AuthSettings, ModelSettings, SafetySettings, ToolSettings, McpSettings, ConfigLayerSettings
+- [x] ClaudeAgentSettings 改为交叉类型组合 (`GeneralSettings & AuthSettings & ...`)，向后兼容
+- [x] 各模块按需导入具体分组，减少耦合面
 
 ### 0.6 CSS 模块化
 
 所有样式在单个 `styles.css` 中。
 
-- [ ] 创建 `src/style/` 目录：base/, components/, features/, settings/
-- [ ] 按组件拆分 CSS，通过 `index.css` 统一导入
-- [ ] 提取 CSS 变量到 `variables.css`
+- [x] 创建 `src/style/` 目录：base/, components/, features/, settings/
+- [x] 按组件拆分 CSS，通过 `index.css` 统一导入
+- [x] 提取 CSS 变量到 `variables.css`
 
 ---
 
