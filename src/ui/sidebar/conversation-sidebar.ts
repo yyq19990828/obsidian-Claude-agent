@@ -1,7 +1,19 @@
 import { setIcon } from "obsidian";
 import type { EventBus } from "../../state/event-bus";
 import type { ConversationStore } from "../../state/conversation-store";
-import type { ConversationTab } from "../../types";
+import type { ConversationTab, TabStatus } from "../../types";
+
+const STATUS_COLORS: Record<TabStatus, string> = {
+	idle: "var(--text-faint)",
+	streaming: "#e9a23b",
+	error: "var(--color-red)",
+};
+
+const STATUS_LABELS: Record<TabStatus, string> = {
+	idle: "",
+	streaming: "Responding...",
+	error: "Error",
+};
 
 export interface SidebarConfig {
 	onSelectConversation: (tabId: string) => void;
@@ -51,6 +63,9 @@ export class ConversationSidebar {
 		this.eventBus.on("tab:created", () => this.render());
 		this.eventBus.on("tab:closed", () => this.render());
 		this.eventBus.on("tab:title-changed", () => this.render());
+		this.eventBus.on("tab:status-changed", ({ tabId, status }) => {
+			this.updateItemStatus(tabId, status);
+		});
 		this.eventBus.on("sidebar:toggle", (visible) => {
 			this.containerEl.classList.toggle("is-visible", visible);
 		});
@@ -78,11 +93,26 @@ export class ConversationSidebar {
 		item.setAttribute("data-tab-id", tab.id);
 
 		const info = item.createDiv({ cls: "claude-agent-sidebar-item-info" });
-		info.createDiv({ cls: "claude-agent-sidebar-item-title", text: tab.title });
+
+		/* Title row with status dot */
+		const titleRow = info.createDiv({ cls: "claude-agent-sidebar-item-title-row" });
+		const statusDot = titleRow.createSpan({ cls: "claude-agent-sidebar-status-dot" });
+		statusDot.style.background = STATUS_COLORS[tab.status];
+		if (tab.status === "streaming") statusDot.classList.add("is-streaming");
+		titleRow.createSpan({ cls: "claude-agent-sidebar-item-title", text: tab.title });
+
+		/* Status label + time */
+		const meta = info.createDiv({ cls: "claude-agent-sidebar-item-meta" });
+		const statusLabel = meta.createSpan({ cls: "claude-agent-sidebar-item-status" });
+		if (tab.status !== "idle") {
+			statusLabel.setText(STATUS_LABELS[tab.status]);
+			if (tab.status === "streaming") statusLabel.classList.add("is-streaming");
+			if (tab.status === "error") statusLabel.classList.add("is-error");
+		}
 
 		const date = new Date(tab.updatedAt);
 		const timeStr = this.formatRelativeTime(date);
-		info.createDiv({ cls: "claude-agent-sidebar-item-time", text: timeStr });
+		meta.createSpan({ cls: "claude-agent-sidebar-item-time", text: timeStr });
 
 		const deleteBtn = item.createEl("button", {
 			cls: "clickable-icon claude-agent-sidebar-item-delete",
@@ -97,6 +127,25 @@ export class ConversationSidebar {
 		item.addEventListener("click", () => {
 			this.config.onSelectConversation(tab.id);
 		});
+	}
+
+	/** Update status dot and label without full re-render. */
+	private updateItemStatus(tabId: string, status: TabStatus): void {
+		const item = this.listEl.querySelector(`[data-tab-id="${tabId}"]`);
+		if (!item) return;
+
+		const dot = item.querySelector<HTMLElement>(".claude-agent-sidebar-status-dot");
+		if (dot) {
+			dot.style.background = STATUS_COLORS[status];
+			dot.classList.toggle("is-streaming", status === "streaming");
+		}
+
+		const label = item.querySelector<HTMLElement>(".claude-agent-sidebar-item-status");
+		if (label) {
+			label.setText(STATUS_LABELS[status]);
+			label.classList.toggle("is-streaming", status === "streaming");
+			label.classList.toggle("is-error", status === "error");
+		}
 	}
 
 	private formatRelativeTime(date: Date): string {

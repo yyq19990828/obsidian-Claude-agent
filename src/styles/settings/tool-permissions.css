@@ -1,0 +1,81 @@
+/* ── Tool Permission UI ── */
+
+.claude-agent-tool-perm-list {
+	display: flex;
+	flex-direction: column;
+	margin: 0.5rem 0;
+}
+
+.claude-agent-tool-perm-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-tool-perm-row:last-child {
+	border-bottom: none;
+}
+
+.claude-agent-tool-perm-name {
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+	font-size: 0.88rem;
+	font-weight: 500;
+}
+
+.claude-agent-tool-perm-desc {
+	display: block;
+	font-size: 0.75rem;
+	font-weight: 400;
+	color: var(--text-muted);
+}
+
+.claude-agent-tool-perm-actions {
+	display: flex;
+	gap: 0.35rem;
+	flex-shrink: 0;
+}
+
+.claude-agent-tool-perm-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	cursor: pointer;
+	font-size: 0.82rem;
+	color: var(--text-muted);
+	transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
+}
+
+.claude-agent-tool-perm-btn:hover {
+	background: var(--background-secondary);
+	border-color: var(--text-muted);
+}
+
+.claude-agent-tool-perm-btn.is-allow {
+	background: color-mix(in srgb, #e9a23b 20%, var(--background-primary));
+	border-color: #e9a23b;
+	color: #e9a23b;
+	font-weight: 700;
+}
+
+.claude-agent-tool-perm-btn.is-ask {
+	background: color-mix(in srgb, #e9a23b 20%, var(--background-primary));
+	border-color: #e9a23b;
+	color: #e9a23b;
+	font-weight: 700;
+}
+
+.claude-agent-tool-perm-btn.is-deny {
+	background: color-mix(in srgb, var(--text-faint) 15%, var(--background-primary));
+	border-color: var(--text-faint);
+	color: var(--text-faint);
+	font-weight: 700;
+}

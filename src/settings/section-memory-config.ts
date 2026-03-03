@@ -1,4 +1,4 @@
-import { Setting, Modal } from "obsidian";
+import { Setting } from "obsidian";
 import type ClaudeAgentPlugin from "../main";
 import type { ConfigLayer } from "../types";
 import type { SettingsResolver } from "./settings-resolver";
@@ -6,141 +6,166 @@ import {
 	CONFIG_SCHEMA_KEYS,
 	flattenSchemaKeys,
 	findSchemaNode,
-	type SchemaKeyNode,
 } from "./config-file-schema";
-
-/* ── Confirm modal for creating config files ── */
-
-class ConfigFileConfirmModal extends Modal {
-	private resolve: ((value: boolean) => void) | null = null;
-
-	constructor(
-		app: import("obsidian").App,
-		private readonly filePath: string,
-		private readonly layerName: string,
-	) {
-		super(app);
-	}
-
-	onOpen(): void {
-		const { contentEl } = this;
-		contentEl.empty();
-
-		contentEl.createEl("h2", { text: `Create ${this.layerName} config file` });
-		contentEl.createEl("p", { text: "This will create a new configuration file at:" });
-		contentEl.createEl("code", { text: this.filePath, cls: "claude-agent-config-path" });
-		contentEl.createEl("p", { text: "The file will start empty. You can then edit it to override specific settings." });
-
-		const buttonRow = contentEl.createDiv({ cls: "modal-button-container" });
-		buttonRow.createEl("button", { text: "Cancel" }).addEventListener("click", () => {
-			this.resolve?.(false);
-			this.close();
-		});
-		buttonRow.createEl("button", { text: "Create", cls: "mod-cta" }).addEventListener("click", () => {
-			this.resolve?.(true);
-			this.close();
-		});
-	}
-
-	onClose(): void {
-		this.resolve?.(false);
-		this.resolve = null;
-		this.contentEl.empty();
-	}
-
-	awaitResult(): Promise<boolean> {
-		return new Promise<boolean>((resolve) => {
-			this.resolve = resolve;
-			this.open();
-		});
-	}
-}
-
-/* ── Helpers ── */
-
-function refreshSettingsTab(plugin: ClaudeAgentPlugin): void {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const setting = (plugin.app as any).setting;
-	setting?.close();
-	setting?.open();
-}
-
-/** Set a nested value in an object by dot-path */
-function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
-	const parts = path.split(".");
-	let current: Record<string, unknown> = obj;
-	for (let i = 0; i < parts.length - 1; i++) {
-		const part = parts[i]!;
-		if (!(part in current) || typeof current[part] !== "object" || current[part] === null) {
-			current[part] = {};
-		}
-		current = current[part] as Record<string, unknown>;
-	}
-	current[parts[parts.length - 1]!] = value;
-}
-
-/** Parse a value string into the right JS type based on schema */
-function parseValueBySchema(valueStr: string, node: SchemaKeyNode | undefined): unknown {
-	if (!node) {
-		// best guess
-		if (valueStr === "true") return true;
-		if (valueStr === "false") return false;
-		const num = Number(valueStr);
-		if (!isNaN(num) && valueStr.trim() !== "") return num;
-		try { return JSON.parse(valueStr) as unknown; } catch { /* fallthrough */ }
-		return valueStr;
-	}
-
-	switch (node.type) {
-		case "boolean":
-			return valueStr === "true";
-		case "number":
-			return Number(valueStr) || 0;
-		case "enum":
-			return valueStr;
-		case "array":
-			try { return JSON.parse(valueStr) as unknown; } catch { return [valueStr]; }
-		case "object":
-			try { return JSON.parse(valueStr) as unknown; } catch { return {}; }
-		default:
-			return valueStr;
-	}
-}
+import { ConfigFileConfirmModal } from "./modals/config-file-confirm-modal";
+import { MemoryPreviewModal } from "./modals/memory-preview-modal";
+import { refreshSettingsTab, setNestedValue, parseValueBySchema, openFileInDefaultEditor } from "./memory-file-manager";
 
 /* ── Main section ── */
 
 export class SectionMemoryConfig {
 	constructor(containerEl: HTMLElement, plugin: ClaudeAgentPlugin) {
+		this.renderConfigSubdirSetting(containerEl, plugin);
 		this.renderMemorySection(containerEl, plugin);
 		this.renderConfigSection(containerEl, plugin);
+	}
+
+	private renderConfigSubdirSetting(containerEl: HTMLElement, plugin: ClaudeAgentPlugin): void {
+		containerEl.createEl("h2", { text: "Custom config subdirectory" });
+		containerEl.createEl("p", {
+			cls: "setting-item-description",
+			text: "This path is used across all tabs for custom config, memory, agents, and other extensions.",
+		});
+
+		new Setting(containerEl)
+			.setName("Subdirectory name")
+			.setDesc("Subdirectory under the plugin folder (default: .agent)")
+			.addText((text) => {
+				text.setPlaceholder(".agent")
+					.setValue(plugin.settings.agentConfigSubdir)
+					.onChange(async (value) => {
+						plugin.settings.agentConfigSubdir = value.trim() || ".agent";
+						await plugin.saveSettings();
+					});
+			});
 	}
 
 	private renderMemorySection(containerEl: HTMLElement, plugin: ClaudeAgentPlugin): void {
 		containerEl.createEl("h2", { text: "Memory" });
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
-			text: "Control persistent memory directories the agent can access.",
+			text: "Control which CLAUDE.md memory files the agent can access.",
 		});
 
-		new Setting(containerEl)
-			.setName("Project memory")
-			.setDesc("Allow .claude/memory/ for persistent project memory")
-			.addToggle((toggle) => {
-				toggle.setValue(plugin.settings.claudeSettingSources.projectMemory).onChange(async (value) => {
-					plugin.settings.claudeSettingSources.projectMemory = value;
-					await plugin.saveSettings();
-				});
-			});
+		const resolver = plugin.resolver;
+		const configSubdir = plugin.settings.agentConfigSubdir || ".agent";
 
-		new Setting(containerEl)
+		/* ── User memory (read-only) ── */
+		const userStatus = resolver?.getMemoryFileStatus("user", configSubdir);
+		const userSetting = new Setting(containerEl)
 			.setName("User memory")
-			.setDesc("Allow ~/.claude/memory/ for persistent user memory")
-			.addToggle((toggle) => {
-				toggle.setValue(plugin.settings.claudeSettingSources.userMemory).onChange(async (value) => {
-					plugin.settings.claudeSettingSources.userMemory = value;
-					await plugin.saveSettings();
+			.setDesc("~/.claude/CLAUDE.md");
+
+		if (userStatus) {
+			userSetting.descEl.createSpan({
+				text: userStatus.exists ? " · found" : " · not found",
+				cls: `claude-agent-config-status ${userStatus.exists ? "is-found" : "is-missing"}`,
+			});
+			userSetting.descEl.createSpan({
+				text: " · read-only",
+				cls: "claude-agent-config-status is-readonly",
+			});
+		}
+
+		if (userStatus?.exists && resolver) {
+			userSetting.addExtraButton((btn) => {
+				btn.setIcon("eye").setTooltip("Preview").onClick(() => {
+					const content = resolver.readMemoryFile("user", configSubdir) ?? "";
+					new MemoryPreviewModal(plugin.app, "User memory", content, userStatus.path).open();
 				});
 			});
+		}
+
+		userSetting.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.claudeSettingSources.userMemory).onChange(async (value) => {
+				plugin.settings.claudeSettingSources.userMemory = value;
+				await plugin.saveSettings();
+			});
+		});
+
+		/* ── Project memory ── */
+		const projectStatus = resolver?.getMemoryFileStatus("project", configSubdir);
+		const projectSetting = new Setting(containerEl)
+			.setName("Project memory")
+			.setDesc("./CLAUDE.md");
+
+		if (projectStatus) {
+			projectSetting.descEl.createSpan({
+				text: projectStatus.exists ? " · found" : " · not found",
+				cls: `claude-agent-config-status ${projectStatus.exists ? "is-found" : "is-missing"}`,
+			});
+		}
+
+		if (projectStatus?.exists && resolver) {
+			projectSetting.addExtraButton((btn) => {
+				btn.setIcon("eye").setTooltip("Preview").onClick(() => {
+					const content = resolver.readMemoryFile("project", configSubdir) ?? "";
+					new MemoryPreviewModal(plugin.app, "Project memory", content, projectStatus.path).open();
+				});
+			});
+			projectSetting.addExtraButton((btn) => {
+				btn.setIcon("pencil").setTooltip("Edit").onClick(() => {
+					openFileInDefaultEditor(projectStatus.path);
+				});
+			});
+		} else if (resolver) {
+			projectSetting.addButton((btn) => {
+				btn.setButtonText("Create").onClick(async () => {
+					if (resolver.createMemoryFile("project", configSubdir)) {
+						refreshSettingsTab(plugin);
+					}
+				});
+			});
+		}
+
+		projectSetting.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.claudeSettingSources.projectMemory).onChange(async (value) => {
+				plugin.settings.claudeSettingSources.projectMemory = value;
+				await plugin.saveSettings();
+			});
+		});
+
+		/* ── Custom memory ── */
+		const customStatus = resolver?.getMemoryFileStatus("custom", configSubdir);
+		const customSetting = new Setting(containerEl)
+			.setName("Custom memory")
+			.setDesc(`<plugin>/${configSubdir}/CLAUDE.md`);
+
+		if (customStatus) {
+			customSetting.descEl.createSpan({
+				text: customStatus.exists ? " · found" : " · not found",
+				cls: `claude-agent-config-status ${customStatus.exists ? "is-found" : "is-missing"}`,
+			});
+		}
+
+		if (customStatus?.exists && resolver) {
+			customSetting.addExtraButton((btn) => {
+				btn.setIcon("eye").setTooltip("Preview").onClick(() => {
+					const content = resolver.readMemoryFile("custom", configSubdir) ?? "";
+					new MemoryPreviewModal(plugin.app, "Custom memory", content, customStatus.path).open();
+				});
+			});
+			customSetting.addExtraButton((btn) => {
+				btn.setIcon("pencil").setTooltip("Edit").onClick(() => {
+					openFileInDefaultEditor(customStatus.path);
+				});
+			});
+		} else if (resolver) {
+			customSetting.addButton((btn) => {
+				btn.setButtonText("Create").onClick(async () => {
+					if (resolver.createMemoryFile("custom", configSubdir)) {
+						refreshSettingsTab(plugin);
+					}
+				});
+			});
+		}
+
+		customSetting.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.claudeSettingSources.customMemory).onChange(async (value) => {
+				plugin.settings.claudeSettingSources.customMemory = value;
+				await plugin.saveSettings();
+			});
+		});
 	}
 
 	private renderConfigSection(containerEl: HTMLElement, plugin: ClaudeAgentPlugin): void {
@@ -257,19 +282,6 @@ export class SectionMemoryConfig {
 		if (customStatus.exists && plugin.settings.configLayerToggles.customEnabled) {
 			this.renderLayerDetails(containerEl, resolver, "custom", configSubdir, plugin, false);
 		}
-
-		/* ── Custom subdirectory name ── */
-		new Setting(containerEl)
-			.setName("Custom config subdirectory")
-			.setDesc("Subdirectory under the plugin folder for custom config (default: .agent)")
-			.addText((text) => {
-				text.setPlaceholder(".agent")
-					.setValue(plugin.settings.agentConfigSubdir)
-					.onChange(async (value) => {
-						plugin.settings.agentConfigSubdir = value.trim() || ".agent";
-						await plugin.saveSettings();
-					});
-			});
 
 		/* ── Reload button ── */
 		new Setting(containerEl)

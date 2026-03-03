@@ -1,0 +1,73 @@
+/* ── Diff View ── */
+
+.claude-agent-diff-view {
+	margin: 0.5rem 0;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.claude-agent-diff-header {
+	padding: 0.35rem 0.55rem;
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-diff-title {
+	font-size: 0.82rem;
+	font-weight: 600;
+}
+
+.claude-agent-diff-content {
+	padding: 0;
+}
+
+.claude-agent-diff-columns {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0;
+}
+
+.claude-agent-diff-col {
+	min-width: 0;
+	overflow: auto;
+}
+
+.claude-agent-diff-col-label {
+	padding: 0.25rem 0.5rem;
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: var(--text-muted);
+	background: var(--background-primary-alt);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-diff-original {
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-diff-col pre {
+	margin: 0;
+	padding: 0.5rem;
+	font-size: 0.78rem;
+	white-space: pre-wrap;
+	max-height: 200px;
+	overflow: auto;
+}
+
+.claude-agent-diff-original pre {
+	background: color-mix(in srgb, var(--color-red) 5%, var(--background-primary));
+}
+
+.claude-agent-diff-edited pre {
+	background: color-mix(in srgb, var(--claude-agent-accent) 5%, var(--background-primary));
+}
+
+.claude-agent-diff-actions {
+	display: flex;
+	gap: 0.4rem;
+	padding: 0.4rem 0.55rem;
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-primary-alt);
+}

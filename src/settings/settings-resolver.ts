@@ -56,6 +56,70 @@ export class SettingsResolver {
 		};
 	}
 
+	/* ── Memory (CLAUDE.md) helpers ── */
+
+	getMemoryFilePath(layer: "user" | "project" | "custom", agentConfigSubdir?: string): string {
+		switch (layer) {
+			case "user":
+				return path.join(this.homeDir, ".claude", "CLAUDE.md");
+			case "project":
+				return path.join(this.vaultDir, "CLAUDE.md");
+			case "custom": {
+				const subdir = agentConfigSubdir ?? ".agent";
+				const resolved = path.resolve(this.pluginDir, subdir);
+				if (!resolved.startsWith(this.pluginDir)) {
+					return path.join(this.pluginDir, ".agent", "CLAUDE.md");
+				}
+				return path.join(resolved, "CLAUDE.md");
+			}
+		}
+	}
+
+	getMemoryFileStatus(layer: "user" | "project" | "custom", agentConfigSubdir: string): ConfigFileStatus {
+		const filePath = this.getMemoryFilePath(layer, agentConfigSubdir);
+		return {
+			exists: existsSync(filePath),
+			path: filePath,
+			readonly: layer === "user",
+		};
+	}
+
+	readMemoryFile(layer: "user" | "project" | "custom", agentConfigSubdir?: string): string | null {
+		const filePath = this.getMemoryFilePath(layer, agentConfigSubdir);
+		if (!existsSync(filePath)) return null;
+		try {
+			return readFileSync(filePath, "utf-8");
+		} catch {
+			return null;
+		}
+	}
+
+	createMemoryFile(layer: "project" | "custom", agentConfigSubdir: string): boolean {
+		const filePath = this.getMemoryFilePath(layer, agentConfigSubdir);
+
+		if (layer === "custom") {
+			const resolved = path.resolve(this.pluginDir, agentConfigSubdir);
+			if (!resolved.startsWith(this.pluginDir)) {
+				console.warn("[Claude Agent] Path traversal blocked:", agentConfigSubdir);
+				return false;
+			}
+		}
+
+		try {
+			const dir = path.dirname(filePath);
+			if (!existsSync(dir)) {
+				mkdirSync(dir, { recursive: true });
+			}
+			if (!existsSync(filePath)) {
+				writeFileSync(filePath, "# CLAUDE.md\n\n", "utf-8");
+			}
+			return true;
+		} catch (err) {
+			console.warn("[Claude Agent] Failed to create memory file:", err);
+			return false;
+		}
+	}
+
 	createConfigFile(layer: "project" | "custom", agentConfigSubdir: string): boolean {
 		const filePath = this.getLayerPath(layer, agentConfigSubdir);
 

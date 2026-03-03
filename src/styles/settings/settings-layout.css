@@ -1,0 +1,187 @@
+/* ── Settings Page ── */
+
+.claude-agent-settings h2 {
+	margin-top: 1.5rem;
+	margin-bottom: 0.6rem;
+	padding-bottom: 0.3rem;
+	border-bottom: 2px solid var(--claude-agent-accent-soft);
+	color: var(--claude-agent-accent);
+	font-size: 1.05rem;
+}
+
+.claude-agent-settings h2:first-child {
+	margin-top: 0;
+}
+
+.claude-agent-mcp-list,
+.claude-agent-commands-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	margin-bottom: 0.5rem;
+}
+
+.claude-agent-mcp-card,
+.claude-agent-command-card {
+	padding: 0.6rem;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.claude-agent-mcp-empty,
+.claude-agent-commands-empty,
+.claude-agent-env-empty {
+	font-size: 0.82rem;
+	color: var(--text-faint);
+	padding: 0.4rem 0;
+}
+
+.claude-agent-env-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	margin-bottom: 0.5rem;
+}
+
+.claude-agent-env-row {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+}
+
+.claude-agent-env-key,
+.claude-agent-env-value {
+	flex: 1;
+	padding: 0.3rem 0.45rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	font-size: 0.82rem;
+}
+
+.claude-agent-env-key {
+	font-family: var(--font-monospace);
+	max-width: 140px;
+}
+
+.claude-agent-env-remove {
+	font-size: 0.75rem;
+	padding: 0.2rem 0.4rem;
+	border-radius: var(--claude-agent-radius-xs);
+	cursor: pointer;
+}
+
+/* ── Collapsible settings sections ── */
+
+.claude-agent-collapsible {
+	margin: 0.5em 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.claude-agent-collapsible summary {
+	cursor: pointer;
+	padding: 0.5em 0.75em;
+	font-weight: 600;
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	user-select: none;
+}
+
+.claude-agent-collapsible[open] summary {
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s) var(--radius-s) 0 0;
+}
+
+.claude-agent-collapsible > div {
+	padding: 0.25em 0.75em;
+}
+
+/* ── Settings Tab Bar ── */
+
+.claude-agent-settings-wrapper {
+	display: flex;
+	flex-direction: column;
+}
+
+.claude-agent-settings-tab-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding: 0.5rem 0;
+	margin-bottom: 0.75rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-settings-tab {
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid transparent;
+	background: none;
+	font-size: 0.82rem;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: background 100ms ease, color 100ms ease;
+}
+
+.claude-agent-settings-tab:hover {
+	background: var(--claude-agent-accent-soft);
+	color: var(--text-normal);
+}
+
+.claude-agent-settings-tab.is-active {
+	border-color: var(--claude-agent-accent);
+	color: var(--claude-agent-accent);
+	font-weight: 600;
+}
+
+.claude-agent-settings-tab.is-disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.claude-agent-settings-content {
+	flex: 1;
+}
+
+.claude-agent-settings-placeholder {
+	padding: 2rem 1rem;
+	text-align: center;
+	color: var(--text-faint);
+	font-size: 0.88rem;
+}
+
+/* ── Sub-tab bar (SDK Tools) ── */
+
+.claude-agent-settings-sub-tab-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.2rem;
+	padding: 0.35rem 0;
+	margin-bottom: 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claude-agent-settings-sub-tab {
+	padding: 0.25rem 0.6rem;
+	border-radius: var(--claude-agent-radius-xs);
+	border: 1px solid transparent;
+	background: none;
+	font-size: 0.78rem;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: background 100ms ease, color 100ms ease;
+}
+
+.claude-agent-settings-sub-tab:hover {
+	background: var(--claude-agent-accent-soft);
+	color: var(--text-normal);
+}
+
+.claude-agent-settings-sub-tab.is-active {
+	border-color: var(--claude-agent-accent);
+	color: var(--claude-agent-accent);
+	font-weight: 600;
+}

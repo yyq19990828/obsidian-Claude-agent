@@ -7,6 +7,8 @@ const DATA_KEY = "conversations";
 
 export class ConversationStore {
 	private tabs: Map<string, ConversationTab> = new Map();
+	private saveTimer: ReturnType<typeof setTimeout> | null = null;
+	private static readonly SAVE_DEBOUNCE_MS = 500;
 
 	constructor(
 		private readonly plugin: Plugin,
@@ -33,6 +35,17 @@ export class ConversationStore {
 			activeTabId: null,
 		} satisfies SavedConversationData;
 		await this.plugin.saveData(allData);
+	}
+
+	/** Debounced save — coalesces rapid writes (e.g. multiple messages in a stream). */
+	private scheduleSave(): void {
+		if (this.saveTimer !== null) {
+			clearTimeout(this.saveTimer);
+		}
+		this.saveTimer = setTimeout(() => {
+			this.saveTimer = null;
+			void this.save();
+		}, ConversationStore.SAVE_DEBOUNCE_MS);
 	}
 
 	getTab(id: string): ConversationTab | undefined {
@@ -77,7 +90,7 @@ export class ConversationStore {
 
 		tab.updatedAt = Date.now();
 		this.eventBus.emit("conversation:message-added", { tabId, message });
-		void this.save();
+		this.scheduleSave();
 	}
 
 	clearMessages(tabId: string): void {
@@ -97,7 +110,7 @@ export class ConversationStore {
 		tab.title = title;
 		tab.updatedAt = Date.now();
 		this.eventBus.emit("tab:title-changed", { tabId, title });
-		void this.save();
+		this.scheduleSave();
 	}
 
 	setSessionId(tabId: string, sessionId: string): void {

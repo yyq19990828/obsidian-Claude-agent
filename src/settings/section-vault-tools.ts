@@ -3,9 +3,8 @@ import type { VaultToolPermissions } from "../types";
 import { renderToolPermRow } from "./tool-permission-row";
 
 const VAULT_TOOLS: { key: keyof VaultToolPermissions; name: string; desc: string }[] = [
-	{ key: "read_note", name: "read_note", desc: "Read content from a vault note" },
 	{ key: "write_note", name: "write_note", desc: "Create or overwrite a vault note" },
-	{ key: "modify_note", name: "modify_note", desc: "Replace content inside an existing note" },
+	{ key: "edit_note", name: "edit_note", desc: "Replace content inside an existing note" },
 ];
 
 export class SectionVaultTools {

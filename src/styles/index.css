@@ -1,0 +1,36 @@
+/* ════════════════════════════════════════════
+   Claude Agent Plugin — Modular CSS
+   ════════════════════════════════════════════ */
+
+@import "./variables.css";
+
+/* Base */
+@import "./base/layout.css";
+@import "./base/animations.css";
+@import "./base/responsive.css";
+
+/* Components */
+@import "./components/header-bar.css";
+@import "./components/tab-bar.css";
+@import "./components/messages.css";
+@import "./components/code-blocks.css";
+@import "./components/tool-cards.css";
+@import "./components/message-actions.css";
+@import "./components/thinking-block.css";
+@import "./components/typing-indicator.css";
+@import "./components/input-area.css";
+@import "./components/file-chips.css";
+@import "./components/sidebar.css";
+@import "./components/status-panel.css";
+
+/* Features */
+@import "./features/system-messages.css";
+@import "./features/inline-edit.css";
+@import "./features/diff-view.css";
+@import "./features/tool-approval.css";
+
+/* Settings */
+@import "./settings/settings-layout.css";
+@import "./settings/tool-permissions.css";
+@import "./settings/save-bar.css";
+@import "./settings/memory-config.css";

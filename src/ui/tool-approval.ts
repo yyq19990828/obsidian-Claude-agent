@@ -2,11 +2,12 @@ import { setIcon } from "obsidian";
 import type { ToolCall } from "../types";
 
 export class ToolApprovalUI {
-	constructor(private readonly containerEl: HTMLElement) {}
+	constructor(private defaultContainerEl: HTMLElement) {}
 
-	requestApproval(toolCall: ToolCall): Promise<boolean> {
+	requestApproval(toolCall: ToolCall, containerEl?: HTMLElement): Promise<boolean> {
+		const target = containerEl ?? this.defaultContainerEl;
 		return new Promise((resolve) => {
-			const card = this.containerEl.createDiv({ cls: "claude-agent-approval-card" });
+			const card = target.createDiv({ cls: "claude-agent-approval-card" });
 
 			/* ── Header: icon + tool name ── */
 			const header = card.createDiv({ cls: "claude-agent-approval-header" });

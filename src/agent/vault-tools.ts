@@ -35,7 +35,7 @@ async function ensureParentFolders(app: App, path: string): Promise<void> {
 }
 
 async function checkVaultToolPermission(
-	toolName: "read_note" | "write_note" | "modify_note",
+	toolName: "write_note" | "edit_note",
 	input: Record<string, unknown>,
 	path: string,
 	getPermission: (name: string) => ToolPermission,
@@ -73,36 +73,6 @@ export function buildVaultMcpServer(
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const tools: any[] = [];
 
-	if (permissions.read_note !== "deny") {
-		tools.push(tool(
-			"read_note",
-			"Read content from a note in the current Obsidian vault.",
-			{
-				path: z.string().min(1),
-			},
-			async ({ path }) => {
-				if (!isPathValid(path)) {
-					return textResult("Path is outside the vault boundary");
-				}
-				const check = await checkVaultToolPermission(
-					"read_note", { path }, path, getVaultToolPermission, requestToolApproval
-				);
-				if (!check.allowed) {
-					return textResult(check.reason ?? "Operation denied.");
-				}
-				const file = app.vault.getAbstractFileByPath(normalizePath(path));
-				if (!file) {
-					return textResult(`File not found: ${path}`);
-				}
-				if (!(file instanceof TFile)) {
-					return textResult(`Path is a folder, not a file: ${path}`);
-				}
-				const content = await app.vault.read(file);
-				return textResult(content);
-			}
-		));
-	}
-
 	if (permissions.write_note !== "deny") {
 		tools.push(tool(
 			"write_note",
@@ -134,9 +104,9 @@ export function buildVaultMcpServer(
 		));
 	}
 
-	if (permissions.modify_note !== "deny") {
+	if (permissions.edit_note !== "deny") {
 		tools.push(tool(
-			"modify_note",
+			"edit_note",
 			"Replace specific content inside an existing note.",
 			{
 				path: z.string().min(1),
@@ -148,7 +118,7 @@ export function buildVaultMcpServer(
 					return textResult("Path is outside the vault boundary");
 				}
 				const check = await checkVaultToolPermission(
-					"modify_note", { path, oldContent, newContent }, path, getVaultToolPermission, requestToolApproval
+					"edit_note", { path, oldContent, newContent }, path, getVaultToolPermission, requestToolApproval
 				);
 				if (!check.allowed) {
 					return textResult(check.reason ?? "Operation denied.");

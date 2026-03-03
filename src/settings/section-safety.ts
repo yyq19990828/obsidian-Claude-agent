@@ -20,18 +20,26 @@ export class SectionSafety {
 		wrapperEl.empty();
 		wrapperEl.createEl("h2", { text: "Safety" });
 
+		const currentMode = plugin.settings.permissionMode || "confirm";
+		const modeLabels: Record<string, string> = {
+			auto_approve: "Auto approve",
+			confirm: "Confirm each action",
+			plan_only: "Plan only (no execution)",
+		};
+
 		new Setting(wrapperEl)
 			.setName("Permission mode")
-			.setDesc("Controls how tool calls are approved.")
+			.setDesc(`Controls how tool calls are approved. Current: ${modeLabels[currentMode] ?? currentMode}`)
 			.addDropdown((dropdown) => {
 				dropdown
-					.addOption("auto_approve", "Auto approve")
 					.addOption("confirm", "Confirm each action")
+					.addOption("auto_approve", "Auto approve")
 					.addOption("plan_only", "Plan only (no execution)")
-					.setValue(plugin.settings.permissionMode)
+					.setValue(currentMode)
 					.onChange(async (value) => {
 						plugin.settings.permissionMode = value as PermissionMode;
 						await plugin.saveSettings();
+						this.render();
 					});
 			});
 

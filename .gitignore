@@ -30,3 +30,6 @@ data.json
 Thumbs.db
 *.tmp
 *.swp
+
+# Third-party reference repos
+third-party/

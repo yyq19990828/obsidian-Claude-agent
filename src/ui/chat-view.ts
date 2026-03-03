@@ -4,11 +4,10 @@ import type { EventBus } from "../state/event-bus";
 import type { TabManager } from "../state/tab-manager";
 import type { ConversationStore } from "../state/conversation-store";
 import { HeaderBar } from "./components/header-bar";
-import { TabBar } from "./components/tab-bar";
 import { MessageList } from "./components/message-list";
 import { InputToolbar } from "./components/input-toolbar";
 import { InputArea } from "./components/input-area";
-import { FileContextChips } from "./components/file-context-chips";
+import { ActiveTabChips } from "./components/active-tab-chips";
 import { ConversationSidebar } from "./sidebar/conversation-sidebar";
 
 export const CHAT_VIEW_TYPE = "claude-agent-chat-view";
@@ -23,6 +22,7 @@ export interface ChatViewDeps {
 	onNewTab: () => void;
 	onCloseTab: (tabId: string) => void;
 	onSwitchTab: (tabId: string) => void;
+	onOpenSettings: () => void;
 	getMaxContextSize: () => number;
 	getSettings: () => { model: string; thinkingBudget: string; permissionMode: string; showDetailedThinking: boolean; showDetailedTools: boolean };
 	onModelChange: (model: string) => void;
@@ -33,11 +33,10 @@ export interface ChatViewDeps {
 export class ChatView extends ItemView {
 	private deps: ChatViewDeps;
 	private headerBar: HeaderBar | null = null;
-	private tabBar: TabBar | null = null;
 	private messageList: MessageList | null = null;
 	private inputToolbar: InputToolbar | null = null;
 	private inputArea: InputArea | null = null;
-	private fileChips: FileContextChips | null = null;
+	private activeTabChips: ActiveTabChips | null = null;
 	private sidebar: ConversationSidebar | null = null;
 	private queueEl: HTMLElement | null = null;
 	private mainContentEl: HTMLElement | null = null;
@@ -53,7 +52,7 @@ export class ChatView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Claude agent";
+		return "Claude Agent";
 	}
 
 	getIcon(): string {
@@ -81,13 +80,7 @@ export class ChatView extends ItemView {
 		this.headerBar = new HeaderBar(this.mainContentEl, {
 			onNewTab: () => this.deps.onNewTab(),
 			onToggleSidebar: () => this.toggleSidebar(),
-		}, this.deps.eventBus);
-
-		/* Tab bar */
-		this.tabBar = new TabBar(this.mainContentEl, {
-			onTabSelect: (tabId) => this.deps.onSwitchTab(tabId),
-			onTabClose: (tabId) => this.deps.onCloseTab(tabId),
-			onNewTab: () => this.deps.onNewTab(),
+			onOpenSettings: () => this.deps.onOpenSettings(),
 		}, this.deps.eventBus);
 
 		/* Message list */
@@ -114,8 +107,13 @@ export class ChatView extends ItemView {
 		/* ── Input container (chips + textarea + hint + bottom bar) ── */
 		this.inputArea = new InputArea(this.mainContentEl, {
 			onSend: (text) => {
-				const tabId = this.deps.tabManager.getActiveTabId();
-				if (tabId) this.deps.onSend(text, tabId);
+				/* No active tab → always create a new one (fresh start or after "new conversation") */
+				let tabId = this.deps.tabManager.getActiveTabId();
+				if (!tabId) {
+					const tab = this.deps.tabManager.createAndActivate();
+					tabId = tab.id;
+				}
+				this.deps.onSend(text, tabId);
 			},
 			onStop: () => {
 				const tabId = this.deps.tabManager.getActiveTabId();
@@ -123,12 +121,12 @@ export class ChatView extends ItemView {
 			},
 		});
 
-		/* File context chips — inject into input container, before textarea */
-		this.fileChips = new FileContextChips(this.inputArea.containerEl, this.deps.eventBus);
-		/* Move chips to be the first child of container */
-		const chipsEl = this.inputArea.containerEl.lastElementChild;
-		if (chipsEl) {
-			this.inputArea.containerEl.insertBefore(chipsEl, this.inputArea.containerEl.firstChild);
+		/* Active tab chips — show open workspace tabs as toggleable context */
+		this.activeTabChips = new ActiveTabChips(this.inputArea.containerEl, this.app, this.deps.eventBus);
+		/* Move active tab chips to be the first child of container */
+		const activeTabChipsEl = this.inputArea.containerEl.lastElementChild;
+		if (activeTabChipsEl) {
+			this.inputArea.containerEl.insertBefore(activeTabChipsEl, this.inputArea.containerEl.firstChild);
 		}
 
 		/* Input toolbar — inject into bottom bar (before spacer) */
@@ -145,63 +143,81 @@ export class ChatView extends ItemView {
 			groups.forEach((g) => spacer.before(g));
 		}
 
-		/* Tab bar initial render */
-		this.refreshTabBar();
-
 		/* Sidebar initial render */
 		this.sidebar.render();
 
 		/* Listen for tab events */
 		this.deps.eventBus.on("tab:switched", () => this.onTabSwitched());
-		this.deps.eventBus.on("tab:created", () => this.refreshTabBar());
-		this.deps.eventBus.on("tab:closed", () => this.refreshTabBar());
+		this.deps.eventBus.on("tab:created", () => this.sidebar?.render());
+		this.deps.eventBus.on("tab:closed", (tabId) => {
+			this.messageList?.destroyTab(tabId);
+			this.sidebar?.render();
+		});
 
-		this.messageList.addSystemMessage("Welcome. Configure authentication in settings, then send a message.");
+		/* Refresh active tab chips when workspace layout changes */
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => {
+				this.activeTabChips?.refresh();
+			})
+		);
+
+		/* Show active tab content, or welcome screen if no tabs yet */
+		const activeTab = this.deps.tabManager.getActiveTab();
+		if (activeTab) {
+			void this.messageList?.switchToTab(activeTab.id, activeTab.messages);
+		} else {
+			this.messageList?.showWelcome();
+		}
 	}
 
 	/* ── Public API for main.ts ── */
 
-	async addUserMessage(content: string): Promise<void> {
-		await this.messageList?.addUserMessage(content);
+	async addUserMessage(content: string, tabId?: string): Promise<void> {
+		await this.messageList?.addUserMessage(content, tabId);
 	}
 
-	startAssistantMessage(sourceUserText: string): void {
-		this.messageList?.startAssistantMessage(sourceUserText);
+	startAssistantMessage(sourceUserText: string, tabId?: string): void {
+		this.messageList?.startAssistantMessage(sourceUserText, tabId);
 	}
 
-	appendAssistantToken(token: string): void {
-		this.messageList?.appendAssistantToken(token);
+	appendAssistantToken(token: string, tabId?: string): void {
+		this.messageList?.appendAssistantToken(token, tabId);
 	}
 
-	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = []): Promise<void> {
-		await this.messageList?.finishAssistantMessage(content, toolCalls);
+	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = [], tabId?: string): Promise<void> {
+		await this.messageList?.finishAssistantMessage(content, toolCalls, tabId);
 	}
 
 	/* ── Thinking stream ── */
 
-	startThinking(): void {
-		this.messageList?.startThinking();
+	startThinking(tabId?: string): void {
+		this.messageList?.startThinking(tabId);
 	}
 
-	appendThinkingToken(token: string): void {
-		this.messageList?.appendThinkingToken(token);
+	appendThinkingToken(token: string, tabId?: string): void {
+		this.messageList?.appendThinkingToken(token, tabId);
 	}
 
-	finishThinking(): void {
-		this.messageList?.finishThinking();
+	finishThinking(tabId?: string): void {
+		this.messageList?.finishThinking(tabId);
 	}
 
 	/* ── Live tool call ── */
 
-	addLiveToolCall(toolCall: ToolCall): void {
-		this.messageList?.addLiveToolCall(toolCall);
+	addLiveToolCall(toolCall: ToolCall, tabId?: string): void {
+		this.messageList?.addLiveToolCall(toolCall, tabId);
 	}
 
-	showError(content: string): void {
-		this.messageList?.showError(content);
+	showError(content: string, tabId?: string): void {
+		this.messageList?.showError(content, tabId);
 	}
 
-	showLoading(isLoading: boolean): void {
+	showLoading(isLoading: boolean, tabId?: string): void {
+		/* Only update input state if the affected tab is the currently active tab */
+		if (tabId) {
+			const activeId = this.deps.tabManager.getActiveTabId();
+			if (activeId !== tabId) return;
+		}
 		this.inputArea?.setStreaming(isLoading);
 	}
 
@@ -228,10 +244,14 @@ export class ChatView extends ItemView {
 		return this.messageList?.requestToolApproval(toolCall) ?? Promise.resolve(false);
 	}
 
-	refreshTabBar(): void {
-		const tabs = this.deps.store.getAllTabs();
-		const activeId = this.deps.tabManager.getActiveTabId();
-		this.tabBar?.render(tabs, activeId);
+	/** Show welcome screen (used by "new conversation" before first send). */
+	showWelcome(): void {
+		this.messageList?.showWelcome();
+		this.inputArea?.setStreaming(false);
+	}
+
+	refreshSidebar(): void {
+		this.sidebar?.render();
 	}
 
 	/* ── Private helpers ── */
@@ -239,8 +259,9 @@ export class ChatView extends ItemView {
 	private async onTabSwitched(): Promise<void> {
 		const tab = this.deps.tabManager.getActiveTab();
 		if (!tab) return;
-		this.refreshTabBar();
-		await this.messageList?.restoreMessages(tab.messages);
+		await this.messageList?.switchToTab(tab.id, tab.messages);
+		/* Sync input state to the new tab's streaming status */
+		this.inputArea?.setStreaming(tab.status === "streaming");
 		this.sidebar?.render();
 	}
 

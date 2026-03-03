@@ -1,0 +1,16 @@
+/* ── CSS Variables ── */
+
+:root {
+	--claude-agent-accent: #e9a23b;
+	--claude-agent-accent-soft: color-mix(in srgb, var(--claude-agent-accent) 15%, transparent);
+	--claude-agent-accent-hover: color-mix(in srgb, var(--claude-agent-accent) 28%, transparent);
+	--claude-agent-user-bg: linear-gradient(135deg, #d4912e 0%, #c47b24 100%);
+	--claude-agent-assistant-bg: color-mix(in srgb, var(--background-secondary) 90%, #f4f1de);
+	--claude-agent-error-bg: color-mix(in srgb, var(--color-red) 18%, var(--background-primary));
+	--claude-agent-sidebar-width: 260px;
+	--claude-agent-toolbar-height: 36px;
+	--claude-agent-radius: 12px;
+	--claude-agent-radius-sm: 8px;
+	--claude-agent-radius-xs: 6px;
+	--claude-agent-font-size: 0.82rem;
+}

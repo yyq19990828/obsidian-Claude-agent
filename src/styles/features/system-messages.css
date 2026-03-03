@@ -1,0 +1,19 @@
+/* ── System & Error Messages ── */
+
+.claude-agent-message-system {
+	align-self: center;
+	max-width: 100%;
+	font-size: 0.85rem;
+	color: var(--text-muted);
+	background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+}
+
+.claude-agent-message-error {
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	background: var(--claude-agent-error-bg);
+	border: 1px solid color-mix(in srgb, var(--color-red) 45%, transparent);
+	color: var(--text-normal);
+}

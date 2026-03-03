@@ -1,0 +1,82 @@
+/* ── Tab Bar ── */
+
+.claude-agent-tab-bar {
+	display: flex;
+	align-items: center;
+	padding: 0.25rem 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: var(--background-primary-alt);
+	gap: 0.25rem;
+	flex-shrink: 0;
+	overflow-x: auto;
+}
+
+.claude-agent-tab-bar-hidden {
+	display: none;
+}
+
+.claude-agent-tab-list {
+	display: flex;
+	gap: 0.2rem;
+	flex: 1;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.claude-agent-tab-list::-webkit-scrollbar {
+	display: none;
+}
+
+.claude-agent-tab {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.8rem;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 100ms ease;
+	border: 1px solid transparent;
+}
+
+.claude-agent-tab:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-tab.is-active {
+	background: var(--claude-agent-accent-soft);
+	border-color: color-mix(in srgb, var(--claude-agent-accent) 40%, transparent);
+}
+
+.claude-agent-tab-status {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.claude-agent-tab-title {
+	max-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.claude-agent-tab-close {
+	opacity: 0;
+	padding: 1px;
+	transition: opacity 100ms;
+}
+
+.claude-agent-tab:hover .claude-agent-tab-close {
+	opacity: 0.7;
+}
+
+.claude-agent-tab-close:hover {
+	opacity: 1 !important;
+}
+
+.claude-agent-tab-add {
+	flex-shrink: 0;
+	padding: 3px;
+}

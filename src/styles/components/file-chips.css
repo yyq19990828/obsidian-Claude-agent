@@ -1,0 +1,113 @@
+/* ── File Context Chips ── */
+
+.claude-agent-file-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	padding: 0.35rem 0.7rem;
+	flex-shrink: 0;
+}
+
+.claude-agent-file-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.15rem 0.4rem;
+	border-radius: 100px;
+	background: var(--claude-agent-accent-soft);
+	border: 1px solid color-mix(in srgb, var(--claude-agent-accent) 30%, transparent);
+	font-size: 0.75rem;
+	color: var(--text-normal);
+}
+
+.claude-agent-file-chip-icon {
+	display: flex;
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-file-chip-name {
+	max-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-file-chip-remove {
+	display: flex;
+	padding: 1px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	opacity: 0.6;
+	border-radius: 50%;
+}
+
+.claude-agent-file-chip-remove:hover {
+	opacity: 1;
+	background: color-mix(in srgb, var(--claude-agent-accent) 20%, transparent);
+}
+
+/* ── Active Tab Context Chips ── */
+
+.claude-agent-active-tab-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	padding: 0.35rem 0.5rem 0;
+	flex-shrink: 0;
+}
+
+.claude-agent-tab-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	padding: 2px 8px;
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.78rem;
+	cursor: pointer;
+	transition: background 0.15s ease, opacity 0.15s ease;
+	user-select: none;
+}
+
+.claude-agent-tab-chip.is-available {
+	background: color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+	color: var(--text-muted);
+}
+
+.claude-agent-tab-chip.is-available:hover {
+	background: var(--claude-agent-accent-soft);
+	color: var(--text-normal);
+}
+
+.claude-agent-tab-chip.is-attached {
+	background: var(--claude-agent-accent-soft);
+	color: var(--text-normal);
+}
+
+.claude-agent-tab-chip.is-attached:hover {
+	background: var(--claude-agent-accent-hover);
+}
+
+.claude-agent-tab-chip-icon {
+	display: flex;
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+}
+
+.claude-agent-tab-chip-icon svg {
+	width: 12px;
+	height: 12px;
+}
+
+.claude-agent-tab-chip-name {
+	max-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-tab-chip-name.is-italic {
+	font-style: italic;
+}

@@ -46,6 +46,7 @@ export const DEFAULT_CLAUDE_SETTING_SOURCES: ClaudeSettingSources = {
 	projectMemory: false,
 	userSettings: false,
 	userMemory: false,
+	customMemory: false,
 };
 
 export const MODELS = [

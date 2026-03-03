@@ -1,0 +1,125 @@
+/* ── Messages ── */
+
+.claude-agent-messages-wrapper {
+	flex: 1;
+	position: relative;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.claude-agent-messages {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	padding: 0.85rem;
+}
+
+.claude-agent-message {
+	width: 100%;
+	padding: 0.55rem 0.7rem;
+	border-radius: var(--claude-agent-radius);
+	font-size: var(--claude-agent-font-size);
+	line-height: 1.45;
+	word-break: break-word;
+	animation: claude-agent-rise 0.2s ease-out;
+}
+
+.claude-agent-message-row {
+	display: flex;
+	flex-direction: column;
+	gap: 0.18rem;
+	width: min(92%, 520px);
+}
+
+.claude-agent-message-row-user {
+	align-self: flex-start;
+	width: 100%;
+}
+
+.claude-agent-message-row-assistant {
+	align-self: flex-start;
+	width: 100%;
+}
+
+.claude-agent-message-user {
+	background: none;
+	border: none;
+	border-radius: 0;
+	border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+	padding-bottom: 0.6rem;
+}
+
+.claude-agent-message-assistant {
+	align-self: flex-start;
+	background: none;
+	border: none;
+	border-radius: 0;
+}
+
+/* ── Role Icons ── */
+
+.claude-agent-role-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-bottom: 0.3rem;
+}
+
+.claude-agent-role-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-role-user {
+	background: color-mix(in srgb, var(--claude-agent-accent) 20%, transparent);
+	color: var(--claude-agent-accent);
+}
+
+.claude-agent-role-assistant {
+	background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+	color: var(--text-muted);
+}
+
+.claude-agent-markdown {
+	font-size: var(--claude-agent-font-size);
+}
+
+.claude-agent-markdown > :first-child {
+	margin-top: 0;
+}
+
+.claude-agent-markdown > :last-child {
+	margin-bottom: 0;
+}
+
+/* ── Loading & Queue ── */
+
+.claude-agent-loading {
+	padding: 0.3rem 0.85rem;
+	font-size: 0.85rem;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.claude-agent-loading-dots {
+	display: inline-block;
+	min-width: 1.5rem;
+	animation: claude-agent-pulse 1s steps(3, end) infinite;
+}
+
+.claude-agent-queue-indicator,
+.claude-agent-context-indicator {
+	font-size: 0.8rem;
+	padding: 0.3rem 0.85rem;
+	border-top: 1px solid var(--background-modifier-border);
+	background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+	color: var(--text-muted);
+	flex-shrink: 0;
+}

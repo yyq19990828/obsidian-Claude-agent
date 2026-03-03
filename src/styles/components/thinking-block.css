@@ -1,0 +1,36 @@
+/* ── Thinking Block (inline) ── */
+
+.claude-agent-thinking-block {
+	margin: 0.2rem 0;
+	overflow: hidden;
+}
+
+.claude-agent-thinking-header {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	cursor: pointer;
+	user-select: none;
+	padding: 0.1rem 0;
+}
+
+.claude-agent-thinking-header:hover {
+	opacity: 0.8;
+}
+
+.claude-agent-thinking-label {
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: #e9a23b;
+}
+
+.claude-agent-thinking-content {
+	padding: 0.45rem 0.55rem;
+	font-size: 0.78rem;
+	color: var(--text-muted);
+	white-space: pre-wrap;
+	max-height: 200px;
+	overflow-y: auto;
+	margin-top: 0.2rem;
+	border-left: 2px solid color-mix(in srgb, #e9a23b 30%, transparent);
+}

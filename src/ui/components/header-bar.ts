@@ -4,6 +4,7 @@ import type { EventBus } from "../../state/event-bus";
 export interface HeaderBarConfig {
 	onNewTab: () => void;
 	onToggleSidebar: () => void;
+	onOpenSettings: () => void;
 }
 
 export class HeaderBar {
@@ -31,6 +32,13 @@ export class HeaderBar {
 		leftGroup.createEl("span", { text: "Claude Agent", cls: "claude-agent-header-title" });
 
 		const rightGroup = this.containerEl.createDiv({ cls: "claude-agent-header-right" });
+
+		const settingsBtn = rightGroup.createEl("button", {
+			cls: "clickable-icon claude-agent-header-btn",
+			attr: { "aria-label": "Settings" },
+		});
+		setIcon(settingsBtn, "settings");
+		settingsBtn.addEventListener("click", () => this.config.onOpenSettings());
 
 		const newTabBtn = rightGroup.createEl("button", {
 			cls: "clickable-icon claude-agent-header-btn",

@@ -1,18 +1,33 @@
 import { App, Component, MarkdownRenderer, setIcon } from "obsidian";
 import { ThinkingBlockRenderer } from "./components/thinking-block";
-import type { ToolCall } from "../types";
+import { renderToolCallCard } from "./components/tool-call-card";
+import { renderAssistantActions, renderUserActions } from "./components/message-actions";
+import type { MessageActionHandlers } from "./components/message-actions";
+import type { ContentBlock, ToolCall, ThinkingBlock } from "../types";
 
 interface RendererSettings {
 	showDetailedThinking: boolean;
 	showDetailedTools: boolean;
 }
 
+/**
+ * Tracks the state of a streaming assistant message bubble.
+ *
+ * The "flow" model: instead of fixed toolContainerEl + contentEl,
+ * content segments and tool cards are appended to `flowEl` in
+ * chronological (streaming) order.
+ */
 interface AssistantBubbleState {
 	rowEl: HTMLElement;
 	wrapperEl: HTMLElement;
-	toolContainerEl: HTMLElement;
-	contentEl: HTMLElement;
-	buffer: string;
+	/** Flow container — mixed content segments and tool cards in streaming order */
+	flowEl: HTMLElement;
+	/** Currently active text segment (null after a tool card is inserted) */
+	activeContentEl: HTMLElement | null;
+	/** Buffer for the current text segment */
+	segmentBuffer: string;
+	/** Full accumulated text across all segments (for copy/persistence) */
+	fullText: string;
 	renderTimer: number | null;
 	sourceUserText: string;
 	typingEl: HTMLElement | null;
@@ -20,15 +35,10 @@ interface AssistantBubbleState {
 	renderedToolIds: Set<string>;
 }
 
-interface MessageActionHandlers {
-	onCopyRaw: (rawMarkdown: string) => void;
-	onRegenerate: (sourceUserText: string) => void;
-}
-
 export class MessageRenderer {
 	private readonly app: App;
 	private readonly component: Component;
-	private readonly containerEl: HTMLElement;
+	private containerEl: HTMLElement;
 	private readonly actions: MessageActionHandlers;
 	private readonly getSettings: () => RendererSettings;
 
@@ -46,23 +56,37 @@ export class MessageRenderer {
 		this.getSettings = getSettings;
 	}
 
+	/** Switch the target container (used for per-tab DOM). */
+	setContainer(el: HTMLElement): void {
+		this.containerEl = el;
+	}
+
 	async addUserMessage(content: string): Promise<void> {
 		const rowEl = this.containerEl.createDiv({ cls: "claude-agent-message-row claude-agent-message-row-user" });
-		const bubble = rowEl.createDiv({ cls: "claude-agent-message claude-agent-message-user" });
-		const contentEl = bubble.createDiv({ cls: "claude-agent-markdown" });
+		const msgEl = rowEl.createDiv({ cls: "claude-agent-message claude-agent-message-user" });
+
+		/* Role icon */
+		const iconEl = msgEl.createSpan({ cls: "claude-agent-role-icon claude-agent-role-user" });
+		setIcon(iconEl, "user");
+
+		const contentEl = msgEl.createDiv({ cls: "claude-agent-markdown" });
 		await this.renderMarkdown(contentEl, content);
-		this.renderUserActions(rowEl, content);
+		renderUserActions(rowEl, content, this.actions);
 	}
 
 	startAssistantMessage(sourceUserText: string): AssistantBubbleState {
 		const rowEl = this.containerEl.createDiv({ cls: "claude-agent-message-row claude-agent-message-row-assistant" });
 		const wrapperEl = rowEl.createDiv({ cls: "claude-agent-message claude-agent-message-assistant" });
 
-		/* Tool cards container — sits above text content so tools appear
-		   in chronological order (tools execute, then model explains). */
-		const toolContainerEl = wrapperEl.createDiv({ cls: "claude-agent-tool-container" });
+		/* Role icon */
+		const iconEl = wrapperEl.createSpan({ cls: "claude-agent-role-icon claude-agent-role-assistant" });
+		setIcon(iconEl, "bot");
 
-		const contentEl = wrapperEl.createDiv({ cls: "claude-agent-markdown" });
+		/* Flow container for interleaved content + tool cards */
+		const flowEl = wrapperEl.createDiv({ cls: "claude-agent-flow" });
+
+		/* Initial content segment */
+		const contentEl = flowEl.createDiv({ cls: "claude-agent-markdown" });
 
 		/* Typing indicator — 3 bouncing dots */
 		const typingEl = contentEl.createDiv({ cls: "claude-agent-typing-indicator" });
@@ -73,9 +97,10 @@ export class MessageRenderer {
 		return {
 			rowEl,
 			wrapperEl,
-			toolContainerEl,
-			contentEl,
-			buffer: "",
+			flowEl,
+			activeContentEl: contentEl,
+			segmentBuffer: "",
+			fullText: "",
 			renderTimer: null,
 			sourceUserText,
 			typingEl,
@@ -91,24 +116,31 @@ export class MessageRenderer {
 			state.typingEl = null;
 		}
 
-		state.buffer += token;
+		/* If no active content segment (e.g., after tool cards), create a new one */
+		if (!state.activeContentEl) {
+			state.activeContentEl = state.flowEl.createDiv({ cls: "claude-agent-markdown" });
+			state.segmentBuffer = "";
+		}
+
+		state.segmentBuffer += token;
+		state.fullText += token;
+
+		const contentEl = state.activeContentEl;
 		if (state.renderTimer !== null) {
 			window.clearTimeout(state.renderTimer);
 		}
 		state.renderTimer = window.setTimeout(() => {
-			void this.renderMarkdown(state.contentEl, state.buffer);
 			state.renderTimer = null;
-		}, 70);
+			void this.renderMarkdown(contentEl, state.segmentBuffer);
+		}, 150);
 	}
 
 	/* ── Thinking stream ── */
 
 	startThinking(state: AssistantBubbleState): void {
-		/* Each thinking round gets its own block — no reuse guard.
-		   Insert before toolContainerEl so the timeline order is:
-		   [thinking-1] [tools-1] [thinking-2] [tools-2] … [text] */
+		/* Insert thinking block before flow content */
 		const blockEl = ThinkingBlockRenderer.startThinking(state.wrapperEl);
-		state.wrapperEl.insertBefore(blockEl, state.toolContainerEl);
+		state.wrapperEl.insertBefore(blockEl, state.flowEl);
 		state.thinkingBlockEl = blockEl;
 
 		const settings = this.getSettings();
@@ -132,7 +164,6 @@ export class MessageRenderer {
 	finishThinking(state: AssistantBubbleState): void {
 		if (state.thinkingBlockEl) {
 			ThinkingBlockRenderer.finish(state.thinkingBlockEl);
-			/* Reset so the next thinking round creates a fresh block */
 			state.thinkingBlockEl = null;
 		}
 	}
@@ -141,7 +172,27 @@ export class MessageRenderer {
 
 	addLiveToolCall(state: AssistantBubbleState, toolCall: ToolCall): void {
 		state.renderedToolIds.add(toolCall.id);
-		this.renderToolCallCard(state.toolContainerEl, toolCall);
+
+		/* Flush current segment before inserting tool card */
+		if (state.activeContentEl && state.segmentBuffer) {
+			if (state.renderTimer !== null) {
+				window.clearTimeout(state.renderTimer);
+				state.renderTimer = null;
+			}
+			void this.renderMarkdown(state.activeContentEl, state.segmentBuffer);
+		}
+
+		/* Remove empty content segment (no text streamed yet) */
+		if (state.activeContentEl && !state.segmentBuffer.trim()) {
+			state.activeContentEl.remove();
+		}
+
+		/* Append tool card to flow — it appears after the current text */
+		renderToolCallCard(state.flowEl, toolCall, this.getSettings());
+
+		/* Next token will create a new content segment */
+		state.activeContentEl = null;
+		state.segmentBuffer = "";
 	}
 
 	async finishAssistantMessage(
@@ -160,17 +211,73 @@ export class MessageRenderer {
 			state.renderTimer = null;
 		}
 
-		state.buffer = content || state.buffer;
-		await this.renderMarkdown(state.contentEl, state.buffer);
+		/* Final render of the active content segment */
+		if (state.activeContentEl && state.segmentBuffer) {
+			await this.renderMarkdown(state.activeContentEl, state.segmentBuffer);
+		}
 
-		/* Only render tool calls that weren't already shown live */
+		/* Remove empty trailing content segment */
+		if (state.activeContentEl && !state.segmentBuffer.trim()) {
+			state.activeContentEl.remove();
+		}
+
+		/* Render tool calls that weren't already shown live */
 		for (const toolCall of toolCalls) {
 			if (!state.renderedToolIds.has(toolCall.id)) {
-				this.renderToolCallCard(state.toolContainerEl, toolCall);
+				renderToolCallCard(state.flowEl, toolCall, this.getSettings());
 			}
 		}
 
-		this.renderAssistantActions(state.rowEl, state.buffer, state.sourceUserText);
+		/* Use provided content (accumulated across all turns) for action buttons */
+		const displayText = content || state.fullText;
+		renderAssistantActions(state.rowEl, displayText, state.sourceUserText, this.actions);
+	}
+
+	async restoreAssistantMessage(
+		content: string,
+		toolCalls: ToolCall[] = [],
+		thinkingBlocks: ThinkingBlock[] = [],
+		contentBlocks?: ContentBlock[],
+	): Promise<void> {
+		const rowEl = this.containerEl.createDiv({ cls: "claude-agent-message-row claude-agent-message-row-assistant" });
+		const wrapperEl = rowEl.createDiv({ cls: "claude-agent-message claude-agent-message-assistant" });
+
+		/* Role icon */
+		const iconEl = wrapperEl.createSpan({ cls: "claude-agent-role-icon claude-agent-role-assistant" });
+		setIcon(iconEl, "bot");
+
+		/* Thinking blocks */
+		for (const block of thinkingBlocks) {
+			ThinkingBlockRenderer.render(wrapperEl, block.thinking, block.collapsed);
+		}
+
+		/* Flow container for tool calls + content */
+		const flowEl = wrapperEl.createDiv({ cls: "claude-agent-flow" });
+
+		if (contentBlocks && contentBlocks.length > 0) {
+			/* Ordered rendering: preserve streaming interleave order */
+			const toolCallMap = new Map(toolCalls.map(tc => [tc.id, tc]));
+			for (const block of contentBlocks) {
+				if (block.type === "text" && block.text.trim()) {
+					const el = flowEl.createDiv({ cls: "claude-agent-markdown" });
+					await this.renderMarkdown(el, block.text);
+				} else if (block.type === "tool_call") {
+					const tc = toolCallMap.get(block.toolCallId);
+					if (tc) renderToolCallCard(flowEl, tc, this.getSettings());
+				}
+			}
+		} else {
+			/* Backward compat: old data without contentBlocks */
+			for (const toolCall of toolCalls) {
+				renderToolCallCard(flowEl, toolCall, this.getSettings());
+			}
+			if (content.trim()) {
+				const contentEl = flowEl.createDiv({ cls: "claude-agent-markdown" });
+				await this.renderMarkdown(contentEl, content);
+			}
+		}
+
+		renderAssistantActions(rowEl, content, "", this.actions);
 	}
 
 	addSystemMessage(content: string): void {
@@ -217,121 +324,6 @@ export class MessageRenderer {
 				this.actions.onCopyRaw(codeText);
 			});
 		});
-	}
-
-	private renderToolCallCard(parentEl: HTMLElement, toolCall: ToolCall): void {
-		const settings = this.getSettings();
-		const row = parentEl.createDiv({ cls: `claude-agent-tool-card is-${toolCall.status}` });
-
-		const iconEl = row.createSpan({ cls: "claude-agent-tool-icon" });
-		const iconName = this.getToolIcon(toolCall.toolName);
-		setIcon(iconEl, iconName);
-
-		const label = toolCall.filePath
-			? `${toolCall.toolName}: ${this.truncatePath(toolCall.filePath)}`
-			: toolCall.toolName;
-		row.createSpan({ cls: "claude-agent-tool-name", text: label });
-
-		const statusEl = row.createSpan({ cls: "claude-agent-tool-status" });
-		if (toolCall.status === "executed") {
-			statusEl.setText("✓");
-			statusEl.addClass("is-executed");
-		} else if (toolCall.status === "pending") {
-			statusEl.setText("···");
-			statusEl.addClass("is-pending");
-		} else {
-			statusEl.setText("✕");
-			statusEl.addClass("is-rejected");
-		}
-
-		/* Detailed mode: expanded by default, clickable to collapse */
-		if (settings.showDetailedTools) {
-			row.addClass("claude-agent-tool-card-expandable");
-			const detailEl = parentEl.createDiv({ cls: "claude-agent-tool-detail" });
-
-			/* Input params */
-			if (toolCall.input && Object.keys(toolCall.input).length > 0) {
-				const paramsEl = detailEl.createDiv({ cls: "claude-agent-tool-detail-section" });
-				paramsEl.createEl("strong", { text: "Input:" });
-				const pre = paramsEl.createEl("pre", { cls: "claude-agent-tool-detail-pre" });
-				pre.setText(JSON.stringify(toolCall.input, null, 2));
-			}
-
-			/* Result */
-			if (toolCall.result) {
-				const resultEl = detailEl.createDiv({ cls: "claude-agent-tool-detail-section" });
-				resultEl.createEl("strong", { text: "Result:" });
-				const pre = resultEl.createEl("pre", { cls: "claude-agent-tool-detail-pre" });
-				pre.setText(typeof toolCall.result === "string" ? toolCall.result : JSON.stringify(toolCall.result, null, 2));
-			}
-
-			row.addEventListener("click", () => {
-				const isHidden = detailEl.style.display === "none";
-				detailEl.style.display = isHidden ? "" : "none";
-			});
-		}
-	}
-
-	private getToolIcon(toolName: string): string {
-		const lower = toolName.toLowerCase();
-		if (lower.includes("read")) return "file-text";
-		if (lower.includes("write")) return "file-plus";
-		if (lower.includes("edit")) return "file-edit";
-		if (lower.includes("bash")) return "terminal";
-		if (lower.includes("glob")) return "search";
-		if (lower.includes("grep")) return "search";
-		if (lower.includes("web")) return "globe";
-		return "wrench";
-	}
-
-	private truncatePath(filePath: string): string {
-		if (filePath.length <= 40) return filePath;
-		const parts = filePath.split("/");
-		if (parts.length <= 2) return "..." + filePath.slice(-37);
-		return ".../" + parts.slice(-2).join("/");
-	}
-
-	private renderAssistantActions(
-		rowEl: HTMLElement,
-		rawMarkdown: string,
-		sourceUserText: string
-	): void {
-		const actionBar = rowEl.createDiv({ cls: "claude-agent-message-actions claude-agent-assistant-actions" });
-		const copyButton = actionBar.createEl("button", {
-			cls: "claude-agent-message-action-button",
-			attr: {
-				type: "button",
-				"aria-label": "Copy raw message",
-				"data-tooltip": "Copy raw message",
-			},
-		});
-		setIcon(copyButton, "copy");
-		copyButton.addEventListener("click", () => this.actions.onCopyRaw(rawMarkdown));
-
-		const regenerateButton = actionBar.createEl("button", {
-			cls: "claude-agent-message-action-button",
-			attr: {
-				type: "button",
-				"aria-label": "Regenerate response",
-				"data-tooltip": "Regenerate",
-			},
-		});
-		setIcon(regenerateButton, "refresh-cw");
-		regenerateButton.addEventListener("click", () => this.actions.onRegenerate(sourceUserText));
-	}
-
-	private renderUserActions(rowEl: HTMLElement, rawText: string): void {
-		const actionBar = rowEl.createDiv({ cls: "claude-agent-message-actions claude-agent-user-actions" });
-		const copyButton = actionBar.createEl("button", {
-			cls: "claude-agent-message-action-button",
-			attr: {
-				type: "button",
-				"aria-label": "Copy message",
-				"data-tooltip": "Copy message",
-			},
-		});
-		setIcon(copyButton, "copy");
-		copyButton.addEventListener("click", () => this.actions.onCopyRaw(rawText));
 	}
 }
 

@@ -1,0 +1,42 @@
+/* ── Responsive ── */
+
+@media (max-width: 680px) {
+	.claude-agent-message {
+		max-width: 100%;
+	}
+
+	.claude-agent-message-row {
+		max-width: 100%;
+	}
+
+	.claude-agent-message-actions {
+		opacity: 1;
+		transform: translateY(0);
+		pointer-events: auto;
+	}
+
+	.claude-agent-input-bottom-bar {
+		flex-wrap: wrap;
+	}
+
+	.claude-agent-sidebar.is-visible {
+		position: absolute;
+		z-index: 10;
+		width: var(--claude-agent-sidebar-width);
+		height: 100%;
+		box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+	}
+
+	.claude-agent-toolbar-label {
+		display: none;
+	}
+
+	.claude-agent-diff-columns {
+		grid-template-columns: 1fr;
+	}
+
+	.claude-agent-diff-original {
+		border-right: none;
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+}

@@ -1,0 +1,27 @@
+/* ── Layout ── */
+
+.claude-agent-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background:
+		radial-gradient(circle at 10% 5%, color-mix(in srgb, var(--claude-agent-accent) 10%, transparent), transparent 40%),
+		radial-gradient(circle at 90% 15%, color-mix(in srgb, #d4912e 8%, transparent), transparent 35%),
+		var(--background-primary);
+	font-size: var(--claude-agent-font-size);
+}
+
+.claude-agent-layout {
+	display: flex;
+	height: 100%;
+	overflow: hidden;
+	position: relative;
+}
+
+.claude-agent-main {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+}

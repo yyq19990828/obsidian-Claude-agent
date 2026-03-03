@@ -3,12 +3,9 @@ import type { SdkToolToggles } from "../types";
 import { renderToolPermRow } from "./tool-permission-row";
 
 const SDK_TOOLS: { key: keyof SdkToolToggles; name: string; desc: string }[] = [
-	{ key: "Read", name: "Read", desc: "Read file contents" },
 	{ key: "Write", name: "Write", desc: "Create or overwrite files" },
 	{ key: "Edit", name: "Edit", desc: "Edit file contents" },
 	{ key: "Bash", name: "Bash", desc: "Execute shell commands" },
-	{ key: "Glob", name: "Glob", desc: "Find files by pattern" },
-	{ key: "Grep", name: "Grep", desc: "Search file contents" },
 	{ key: "Skill", name: "Skill", desc: "Execute skills" },
 	{ key: "WebFetch", name: "WebFetch", desc: "Fetch web content" },
 	{ key: "WebSearch", name: "WebSearch", desc: "Search the web" },

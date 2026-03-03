@@ -25,6 +25,11 @@ export class TabManager {
 		this.eventBus.emit("tab:switched", tabId);
 	}
 
+	/** Clear active tab (used when entering "new conversation" welcome state). */
+	deactivate(): void {
+		this.activeTabId = null;
+	}
+
 	createAndActivate(title?: string): ConversationTab {
 		const tab = this.store.createTab(title);
 		this.setActiveTab(tab.id);

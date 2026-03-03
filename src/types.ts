@@ -18,12 +18,17 @@ export interface ThinkingBlock {
 	collapsed: boolean;
 }
 
+export type ContentBlock =
+	| { type: "text"; text: string }
+	| { type: "tool_call"; toolCallId: string };
+
 export interface Message {
 	role: MessageRole;
 	content: string;
 	timestamp: number;
 	toolCalls?: ToolCall[];
 	thinkingBlocks?: ThinkingBlock[];
+	contentBlocks?: ContentBlock[];
 }
 
 export interface Conversation {
@@ -83,6 +88,7 @@ export interface ClaudeSettingSources {
 	projectMemory: boolean;
 	userSettings: boolean;
 	userMemory: boolean;
+	customMemory: boolean;
 }
 
 export type ThinkingBudget = "off" | "normal" | "extended";
@@ -129,57 +135,67 @@ export interface SubagentConfig {
 	enabled: boolean;
 }
 
-export interface ClaudeAgentSettings {
-	/* General */
+/* ── Settings sub-groups ── */
+
+export interface GeneralSettings {
 	userName: string;
 	autoScroll: boolean;
 	autoGenerateTitle: boolean;
 	showDetailedThinking: boolean;
 	showDetailedTools: boolean;
+}
 
-	/* Auth */
+export interface AuthSettings {
 	apiKey: string;
 	authMethod: AuthMethod;
 	claudeCliPath: string;
+}
 
-	/* Model */
+export interface ModelSettings {
 	model: string;
 	thinkingBudget: ThinkingBudget;
+}
 
-	/* Safety */
+export interface SafetySettings {
 	confirmFileOperations: boolean;
 	permissionMode: PermissionMode;
 	commandBlacklist: string[];
 	allowedPaths: string[];
+}
 
-	/* SDK access (safe/super mode) */
+export interface ToolSettings {
 	safeMode: boolean;
 	sdkToolToggles: SdkToolToggles;
 	vaultToolPermissions: VaultToolPermissions;
 	claudeSettingSources: ClaudeSettingSources;
+}
 
-	/* Context */
-	maxContextSize: number;
-
-	/* MCP */
+export interface McpSettings {
 	mcpServers: McpServerConfig[];
-
-	/* Slash commands */
 	slashCommands: SlashCommand[];
-
-	/* Subagents */
 	subagents: SubagentConfig[];
-
-	/* Environment */
 	envVars: Record<string, string>;
+}
 
-	/* Config file layers */
+export interface ConfigLayerSettings {
 	agentConfigSubdir: string;
 	configLayerToggles: ConfigLayerToggles;
+}
 
-	/* Advanced */
+export interface AdvancedSettings {
+	maxContextSize: number;
 	maxMessagesPerConversation: number;
 }
+
+export type ClaudeAgentSettings =
+	GeneralSettings &
+	AuthSettings &
+	ModelSettings &
+	SafetySettings &
+	ToolSettings &
+	McpSettings &
+	ConfigLayerSettings &
+	AdvancedSettings;
 
 /* ── Tab & conversation management ── */
 

@@ -1,0 +1,97 @@
+/* ── Status Panel ── */
+
+.claude-agent-status-panel {
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-primary-alt);
+	flex-shrink: 0;
+}
+
+.claude-agent-status-header {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.65rem;
+	cursor: pointer;
+	user-select: none;
+	font-size: 0.78rem;
+}
+
+.claude-agent-status-header:hover {
+	background: var(--claude-agent-accent-soft);
+}
+
+.claude-agent-status-toggle {
+	display: flex;
+	width: 14px;
+	height: 14px;
+}
+
+.claude-agent-status-title {
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.claude-agent-status-content {
+	padding: 0.4rem 0.65rem;
+	border-top: 1px solid var(--background-modifier-border);
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.claude-agent-status-section-title {
+	font-size: 0.72rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-top: 0.4rem;
+	margin-bottom: 0.2rem;
+}
+
+.claude-agent-status-section-title:first-child {
+	margin-top: 0;
+}
+
+.claude-agent-status-tools {
+	font-size: 0.78rem;
+}
+
+.claude-agent-status-tool-item {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.15rem 0;
+}
+
+.claude-agent-status-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.claude-agent-status-dot.is-running {
+	background: #e9a23b;
+	animation: claude-agent-pulse 1s ease infinite;
+}
+
+.claude-agent-status-dot.is-done {
+	background: var(--claude-agent-accent);
+}
+
+.claude-agent-status-empty {
+	font-size: 0.78rem;
+	color: var(--text-faint);
+}
+
+.claude-agent-status-bash {
+	margin: 0;
+	padding: 0.35rem;
+	background: #171a21;
+	border-radius: var(--claude-agent-radius-xs);
+	color: #d7dde8;
+	font-size: 0.75rem;
+	max-height: 100px;
+	overflow-y: auto;
+	white-space: pre-wrap;
+}

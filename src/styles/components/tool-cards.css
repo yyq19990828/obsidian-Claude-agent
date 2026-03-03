@@ -1,0 +1,95 @@
+/* ── Tool Cards (compact inline) ── */
+
+.claude-agent-tool-card {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin-top: 0.25rem;
+	padding: 0.15rem 0;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	border: none;
+	background: none;
+}
+
+.claude-agent-tool-icon {
+	display: flex;
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: var(--text-faint);
+}
+
+.claude-agent-tool-name {
+	font-family: var(--font-monospace);
+	font-size: 0.78rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.claude-agent-tool-status {
+	flex-shrink: 0;
+	font-size: 0.78rem;
+	font-weight: 600;
+}
+
+.claude-agent-tool-status.is-executed {
+	color: var(--claude-agent-accent);
+}
+
+.claude-agent-tool-status.is-pending {
+	color: #e9a23b;
+}
+
+.claude-agent-tool-status.is-rejected {
+	color: var(--color-red);
+}
+
+.claude-agent-tool-actions {
+	display: flex;
+	gap: 0.4rem;
+	margin-top: 0.4rem;
+}
+
+/* ── Tool Card Detail Mode ── */
+
+.claude-agent-tool-card-expandable {
+	cursor: pointer;
+}
+
+.claude-agent-tool-card-expandable:hover {
+	opacity: 0.8;
+}
+
+.claude-agent-tool-detail {
+	margin-left: 1.2rem;
+	margin-bottom: 0.3rem;
+}
+
+.claude-agent-tool-detail-section {
+	margin: 0.25rem 0;
+	font-size: 0.78rem;
+	color: var(--text-muted);
+}
+
+.claude-agent-tool-detail-section strong {
+	display: block;
+	margin-bottom: 0.15rem;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--text-faint);
+}
+
+.claude-agent-tool-detail-pre {
+	margin: 0.15rem 0 0;
+	padding: 0.4rem 0.55rem;
+	background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.75rem;
+	max-height: 150px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}

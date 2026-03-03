@@ -1,0 +1,59 @@
+/* ── Inline Edit ── */
+
+.claude-agent-inline-edit-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.claude-agent-inline-edit-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.4);
+}
+
+.claude-agent-inline-edit-card {
+	position: relative;
+	width: 420px;
+	max-width: 90vw;
+	padding: 1.2rem;
+	border-radius: var(--claude-agent-radius);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.claude-agent-inline-edit-card h3 {
+	margin: 0 0 0.6rem;
+	font-size: 1rem;
+}
+
+.claude-agent-inline-edit-preview {
+	margin: 0 0 0.6rem;
+	padding: 0.5rem;
+	background: var(--background-secondary);
+	border-radius: var(--claude-agent-radius-xs);
+	font-size: 0.8rem;
+	max-height: 100px;
+	overflow: auto;
+}
+
+.claude-agent-inline-edit-input {
+	width: 100%;
+	padding: 0.45rem;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	margin-bottom: 0.6rem;
+	font-size: 0.85rem;
+	resize: vertical;
+}
+
+.claude-agent-inline-edit-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.4rem;
+}

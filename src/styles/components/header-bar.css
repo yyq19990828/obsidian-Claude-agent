@@ -1,0 +1,34 @@
+/* ── Header Bar ── */
+
+.claude-agent-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0.75rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: color-mix(in srgb, var(--background-primary-alt) 80%, transparent);
+	backdrop-filter: blur(8px);
+	flex-shrink: 0;
+}
+
+.claude-agent-header-left,
+.claude-agent-header-right {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.claude-agent-header-title {
+	font-size: 0.88rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+.claude-agent-header-btn {
+	padding: 4px;
+	border-radius: var(--claude-agent-radius-xs);
+}
+
+.claude-agent-header-btn:hover {
+	background: var(--claude-agent-accent-hover);
+}

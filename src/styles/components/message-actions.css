@@ -1,0 +1,67 @@
+/* ── Message Actions ── */
+
+.claude-agent-message-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	flex-wrap: wrap;
+	align-self: flex-end;
+	opacity: 0;
+	transform: translateY(2px);
+	pointer-events: none;
+	transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.claude-agent-message-row:hover .claude-agent-message-actions,
+.claude-agent-message-row:focus-within .claude-agent-message-actions {
+	opacity: 1;
+	transform: translateY(0);
+	pointer-events: auto;
+}
+
+.claude-agent-user-actions,
+.claude-agent-assistant-actions {
+	margin-right: 0.15rem;
+}
+
+.claude-agent-message-action-button {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 28px;
+	padding: 0;
+	border-radius: var(--claude-agent-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+	background: color-mix(in srgb, var(--background-primary) 85%, transparent);
+	cursor: pointer;
+}
+
+.claude-agent-message-action-button:hover {
+	border-color: color-mix(in srgb, var(--claude-agent-accent) 55%, var(--background-modifier-border));
+	background: color-mix(in srgb, var(--claude-agent-accent) 12%, var(--background-primary));
+}
+
+.claude-agent-message-action-button::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + 8px);
+	transform: translateX(-50%) translateY(4px);
+	opacity: 0;
+	pointer-events: none;
+	font-size: 0.72rem;
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--text-on-accent);
+	background: color-mix(in srgb, var(--background-modifier-border-focus) 70%, #000);
+	padding: 0.28rem 0.38rem;
+	border-radius: var(--claude-agent-radius-xs);
+	transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.claude-agent-message-action-button:hover::after {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+}
