@@ -19,13 +19,23 @@ export function migrateSettings(saved: Partial<ClaudeAgentSettings>): Partial<Cl
 	return { sdkToolToggles: migratedToggles };
 }
 
-/** Deep merge saved data with defaults */
+/** Deep merge saved data with defaults, stripping unknown keys from sub-objects */
 export function mergeWithDefaults(saved: Partial<ClaudeAgentSettings>, migrated: Partial<ClaudeAgentSettings>): ClaudeAgentSettings {
+	// Only keep keys that exist in the default shape (removes stale tool entries)
+	const vaultPerms = { ...DEFAULT_VAULT_TOOL_PERMISSIONS };
+	if (saved.vaultToolPermissions) {
+		for (const key of Object.keys(DEFAULT_VAULT_TOOL_PERMISSIONS) as (keyof typeof DEFAULT_VAULT_TOOL_PERMISSIONS)[]) {
+			if (key in saved.vaultToolPermissions) {
+				vaultPerms[key] = saved.vaultToolPermissions[key];
+			}
+		}
+	}
+
 	return {
 		...DEFAULT_SETTINGS,
 		...saved,
 		sdkToolToggles: migrated.sdkToolToggles ?? DEFAULT_SDK_TOOL_TOGGLES,
-		vaultToolPermissions: { ...DEFAULT_VAULT_TOOL_PERMISSIONS, ...saved.vaultToolPermissions },
+		vaultToolPermissions: vaultPerms,
 		claudeSettingSources: { ...DEFAULT_CLAUDE_SETTING_SOURCES, ...saved.claudeSettingSources },
 		configLayerToggles: { ...DEFAULT_CONFIG_LAYER_TOGGLES, ...saved.configLayerToggles },
 	};

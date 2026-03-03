@@ -10,7 +10,10 @@ import { TabManager } from "./state/tab-manager";
 import { InlineEditHandler } from "./ui/inline-edit/inline-edit-handler";
 import { SettingsResolver } from "./settings/settings-resolver";
 import { MessageProcessor } from "./services/message-processor";
+import { VaultFileCache } from "./services/vault-file-cache";
+import { ConversationFork } from "./services/conversation-fork";
 import { migrateSettings, mergeWithDefaults } from "./settings/settings-migrator";
+import { fileEntryToSuggestion, folderToSuggestion, type MentionSuggestion } from "./ui/components/mention-autocomplete";
 import type {
 	ClaudeAgentSettings,
 	ResolvedSettings,
@@ -27,6 +30,8 @@ export default class ClaudeAgentPlugin extends Plugin {
 	private tabManager: TabManager | null = null;
 	private inlineEdit: InlineEditHandler | null = null;
 	private messageProcessor: MessageProcessor | null = null;
+	private vaultFileCache: VaultFileCache | null = null;
+	private conversationFork: ConversationFork | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -54,7 +59,18 @@ export default class ClaudeAgentPlugin extends Plugin {
 			() => this.resolvedSettings.merged,
 			(toolCall: ToolCall) => this.getChatView()?.requestToolApproval(toolCall) ?? Promise.resolve(false),
 			pluginDir,
+			this.eventBus,
 		);
+
+		/* Vault file cache for @-mentions */
+		this.vaultFileCache = new VaultFileCache(this.app);
+		void this.vaultFileCache.buildIndex().then(() => {
+			this.eventBus.emit("context:file-index-ready", undefined as unknown as void);
+		});
+		this.vaultFileCache.registerEvents(this);
+
+		/* Conversation fork service */
+		this.conversationFork = new ConversationFork(this.store, this.tabManager, this.eventBus);
 
 		/* Restore session IDs */
 		for (const tab of this.store.getAllTabs()) {
@@ -72,6 +88,7 @@ export default class ClaudeAgentPlugin extends Plugin {
 			() => this.getChatView(),
 			() => this.settings,
 			() => this.activateChatView(),
+			this.app,
 		);
 
 		/* Register chat view */
@@ -80,14 +97,17 @@ export default class ClaudeAgentPlugin extends Plugin {
 				eventBus: this.eventBus,
 				tabManager: this.tabManager!,
 				store: this.store!,
-				onSend: (text, tabId) => void this.messageProcessor?.enqueueOrRun(text, tabId),
+				onSend: (text, tabId, mentions) => void this.messageProcessor?.enqueueOrRun(text, tabId, mentions),
 				onStop: (tabId) => this.agentService?.abortInFlight(tabId),
 				onClear: (tabId) => void this.clearConversation(tabId),
 				onNewTab: () => this.createNewTab(),
 				onCloseTab: (tabId) => this.closeTab(tabId),
 				onSwitchTab: (tabId) => this.switchTab(tabId),
 				onOpenSettings: () => this.openPluginSettings(),
+				onFork: (tabId, messageIndex) => this.handleFork(tabId, messageIndex),
 				getMaxContextSize: () => this.settings.maxContextSize,
+				getFileSuggestions: (query) => this.getFileSuggestions(query),
+				getAgentSuggestions: (query) => this.getAgentSuggestions(query),
 				getSettings: () => ({
 					model: this.settings.model,
 					thinkingBudget: this.settings.thinkingBudget,
@@ -150,9 +170,11 @@ export default class ClaudeAgentPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		const saved = ((await this.loadData()) ?? {}) as Partial<ClaudeAgentSettings>;
-		const migrated = migrateSettings(saved);
-		this.settings = mergeWithDefaults(saved, migrated);
+		const raw = ((await this.loadData()) ?? {}) as Record<string, unknown>;
+		// Exclude non-settings keys that share the same data.json
+		const { conversations: _, ...saved } = raw;
+		const migrated = migrateSettings(saved as Partial<ClaudeAgentSettings>);
+		this.settings = mergeWithDefaults(saved as Partial<ClaudeAgentSettings>, migrated);
 
 		if (this.resolver) {
 			this.resolvedSettings = this.resolver.resolve(this.settings);
@@ -252,6 +274,43 @@ export default class ClaudeAgentPlugin extends Plugin {
 		if (setting) {
 			setting.open();
 			setting.openTabById(this.manifest.id);
+		}
+	}
+
+	/* ── @-mention helpers ── */
+
+	private getFileSuggestions(query: string): MentionSuggestion[] {
+		if (!this.vaultFileCache) return [];
+		const files = this.vaultFileCache.search(query);
+		const folders = this.vaultFileCache.searchFolders(query, 5);
+		return [
+			...folders.map(folderToSuggestion),
+			...files.map(fileEntryToSuggestion),
+		];
+	}
+
+	private getAgentSuggestions(query: string): MentionSuggestion[] {
+		const agents = this.settings.subagents.filter(a => a.enabled && a.name);
+		const lower = query.toLowerCase();
+		return agents
+			.filter(a => a.name.toLowerCase().includes(lower))
+			.slice(0, 5)
+			.map(a => ({
+				type: "agent" as const,
+				label: a.name,
+				path: a.name,
+				icon: "bot",
+			}));
+	}
+
+	/* ── Fork ── */
+
+	private handleFork(tabId: string, messageIndex: number): void {
+		if (!this.conversationFork) return;
+		const newTabId = this.conversationFork.forkFromMessage(tabId, messageIndex, "new_tab");
+		if (newTabId) {
+			this.switchTab(newTabId);
+			this.getChatView()?.refreshSidebar();
 		}
 	}
 
