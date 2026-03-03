@@ -62,6 +62,15 @@ export const THINKING_BUDGETS: Record<string, number | null> = {
 	extended: 50000,
 };
 
+export const MCP_VAULT_SERVER_NAME = "obsidian-vault";
+export const MCP_VAULT_TOOL_PREFIX = `mcp__${MCP_VAULT_SERVER_NAME}__`;
+
+/** Maps vault tool short names to their full MCP-qualified names. */
+export const VAULT_TOOL_MCP_NAMES: Readonly<Record<string, string>> = {
+	write_note: `${MCP_VAULT_TOOL_PREFIX}write_note`,
+	edit_note: `${MCP_VAULT_TOOL_PREFIX}edit_note`,
+};
+
 export const MAX_MESSAGES_PER_CONVERSATION = 200;
 
 export const DEFAULT_SETTINGS: ClaudeAgentSettings = {

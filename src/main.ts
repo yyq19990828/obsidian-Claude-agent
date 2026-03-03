@@ -13,9 +13,7 @@ import { MessageProcessor } from "./services/message-processor";
 import { migrateSettings, mergeWithDefaults } from "./settings/settings-migrator";
 import type {
 	ClaudeAgentSettings,
-	PermissionMode,
 	ResolvedSettings,
-	ThinkingBudget,
 	ToolCall,
 } from "./types";
 
@@ -98,8 +96,8 @@ export default class ClaudeAgentPlugin extends Plugin {
 					showDetailedTools: this.settings.showDetailedTools,
 				}),
 				onModelChange: (model) => { this.settings.model = model; void this.saveSettings(); },
-				onThinkingChange: (budget) => { this.settings.thinkingBudget = budget as ThinkingBudget; void this.saveSettings(); },
-				onPermissionChange: (mode) => { this.settings.permissionMode = mode as PermissionMode; void this.saveSettings(); },
+				onThinkingChange: (budget) => { this.settings.thinkingBudget = budget; void this.saveSettings(); },
+				onPermissionChange: (mode) => { this.settings.permissionMode = mode; void this.saveSettings(); },
 			});
 		});
 

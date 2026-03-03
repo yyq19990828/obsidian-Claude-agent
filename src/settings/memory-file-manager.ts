@@ -52,7 +52,18 @@ export function parseValueBySchema(valueStr: string, node: SchemaKeyNode | undef
 
 export function openFileInDefaultEditor(filePath: string): void {
 	import("node:child_process").then(({ exec }) => {
-		exec(`xdg-open "${filePath}"`, (err) => {
+		let cmd: string;
+		switch (process.platform) {
+			case "darwin":
+				cmd = `open "${filePath}"`;
+				break;
+			case "win32":
+				cmd = `start "" "${filePath}"`;
+				break;
+			default:
+				cmd = `xdg-open "${filePath}"`;
+		}
+		exec(cmd, (err) => {
 			if (err) console.warn("[Claude Agent] Failed to open file:", err);
 		});
 	}).catch(() => {

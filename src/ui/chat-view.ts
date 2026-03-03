@@ -1,5 +1,5 @@
 import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
-import type { ToolCall } from "../types";
+import type { ToolCall, PermissionMode, ThinkingBudget } from "../types";
 import type { EventBus } from "../state/event-bus";
 import type { TabManager } from "../state/tab-manager";
 import type { ConversationStore } from "../state/conversation-store";
@@ -24,10 +24,10 @@ export interface ChatViewDeps {
 	onSwitchTab: (tabId: string) => void;
 	onOpenSettings: () => void;
 	getMaxContextSize: () => number;
-	getSettings: () => { model: string; thinkingBudget: string; permissionMode: string; showDetailedThinking: boolean; showDetailedTools: boolean };
+	getSettings: () => { model: string; thinkingBudget: ThinkingBudget; permissionMode: PermissionMode; showDetailedThinking: boolean; showDetailedTools: boolean };
 	onModelChange: (model: string) => void;
-	onThinkingChange: (budget: string) => void;
-	onPermissionChange: (mode: string) => void;
+	onThinkingChange: (budget: ThinkingBudget) => void;
+	onPermissionChange: (mode: PermissionMode) => void;
 }
 
 export class ChatView extends ItemView {
@@ -41,6 +41,7 @@ export class ChatView extends ItemView {
 	private queueEl: HTMLElement | null = null;
 	private mainContentEl: HTMLElement | null = null;
 	private sidebarVisible = false;
+	private eventCleanupFns: (() => void)[] = [];
 
 	constructor(leaf: WorkspaceLeaf, deps: ChatViewDeps) {
 		super(leaf);
@@ -146,13 +147,21 @@ export class ChatView extends ItemView {
 		/* Sidebar initial render */
 		this.sidebar.render();
 
-		/* Listen for tab events */
-		this.deps.eventBus.on("tab:switched", () => this.onTabSwitched());
-		this.deps.eventBus.on("tab:created", () => this.sidebar?.render());
-		this.deps.eventBus.on("tab:closed", (tabId) => {
+		/* Listen for tab events (store refs for cleanup) */
+		const onSwitched = () => this.onTabSwitched();
+		const onCreated = () => this.sidebar?.render();
+		const onClosed = (tabId: string) => {
 			this.messageList?.destroyTab(tabId);
 			this.sidebar?.render();
-		});
+		};
+		this.deps.eventBus.on("tab:switched", onSwitched);
+		this.deps.eventBus.on("tab:created", onCreated);
+		this.deps.eventBus.on("tab:closed", onClosed);
+		this.eventCleanupFns.push(
+			() => this.deps.eventBus.off("tab:switched", onSwitched),
+			() => this.deps.eventBus.off("tab:created", onCreated),
+			() => this.deps.eventBus.off("tab:closed", onClosed),
+		);
 
 		/* Refresh active tab chips when workspace layout changes */
 		this.registerEvent(
@@ -263,6 +272,13 @@ export class ChatView extends ItemView {
 		/* Sync input state to the new tab's streaming status */
 		this.inputArea?.setStreaming(tab.status === "streaming");
 		this.sidebar?.render();
+	}
+
+	async onClose(): Promise<void> {
+		for (const cleanup of this.eventCleanupFns) cleanup();
+		this.eventCleanupFns = [];
+		this.sidebar?.destroy();
+		this.messageList?.destroy();
 	}
 
 	private toggleSidebar(): void {

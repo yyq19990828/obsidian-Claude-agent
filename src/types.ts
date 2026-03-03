@@ -31,13 +31,6 @@ export interface Message {
 	contentBlocks?: ContentBlock[];
 }
 
-export interface Conversation {
-	messages: Message[];
-	sessionId?: string;
-	isLoading: boolean;
-	queue: string[];
-}
-
 /* ── Note context ── */
 
 export interface NoteContext {

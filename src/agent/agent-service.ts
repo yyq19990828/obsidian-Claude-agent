@@ -193,12 +193,6 @@ export class AgentService {
 				this.requestToolApproval,
 			);
 
-			console.log("[claude-agent] SDK options:", JSON.stringify({
-				permissionMode: options.permissionMode,
-				allowDangerouslySkipPermissions: options.allowDangerouslySkipPermissions,
-				hasCanUseTool: typeof options.canUseTool === "function",
-			}));
-
 			const stream = query({
 				prompt,
 				options,
@@ -277,7 +271,7 @@ export class AgentService {
 								type: "assistant_complete",
 								content: pendingAssistantText,
 								toolCalls: pendingToolCalls,
-								thinkingBlocks: [...allThinkingBlocks],
+								thinkingBlocks: allThinkingBlocks.length > 0 ? [...allThinkingBlocks] : [],
 							};
 							pendingToolCalls = [];
 							pendingAssistantText = "";
@@ -287,7 +281,7 @@ export class AgentService {
 							type: "assistant_complete",
 							content: assistantText,
 							toolCalls: [],
-							thinkingBlocks: [...allThinkingBlocks],
+							thinkingBlocks: allThinkingBlocks.length > 0 ? [...allThinkingBlocks] : [],
 						};
 					}
 					continue;
@@ -313,7 +307,7 @@ export class AgentService {
 							status: "executed" as const,
 							result: resultsMap.get(tc.id) ?? "",
 						})),
-					thinkingBlocks: [...allThinkingBlocks],
+					thinkingBlocks: allThinkingBlocks.length > 0 ? [...allThinkingBlocks] : [],
 					};
 					pendingToolCalls = [];
 					pendingAssistantText = "";
@@ -333,7 +327,7 @@ export class AgentService {
 							type: "assistant_complete",
 							content: pendingAssistantText,
 							toolCalls: pendingToolCalls,
-						thinkingBlocks: [...allThinkingBlocks],
+						thinkingBlocks: allThinkingBlocks.length > 0 ? [...allThinkingBlocks] : [],
 						};
 						pendingToolCalls = [];
 						pendingAssistantText = "";

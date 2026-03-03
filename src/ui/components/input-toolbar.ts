@@ -1,10 +1,11 @@
 import { MODELS } from "../../constants";
+import type { ThinkingBudget, PermissionMode } from "../../types";
 
 export interface InputToolbarConfig {
-	getSettings: () => { model: string; thinkingBudget: string; permissionMode: string };
+	getSettings: () => { model: string; thinkingBudget: ThinkingBudget; permissionMode: PermissionMode };
 	onModelChange: (model: string) => void;
-	onThinkingChange: (budget: string) => void;
-	onPermissionChange: (mode: string) => void;
+	onThinkingChange: (budget: ThinkingBudget) => void;
+	onPermissionChange: (mode: PermissionMode) => void;
 }
 
 export class InputToolbar {
@@ -39,7 +40,7 @@ export class InputToolbar {
 			this.config.onModelChange(this.modelSelect.value);
 		});
 		this.thinkingSelect.addEventListener("change", () => {
-			this.config.onThinkingChange(this.thinkingSelect.value);
+			this.config.onThinkingChange(this.thinkingSelect.value as ThinkingBudget);
 		});
 	}
 

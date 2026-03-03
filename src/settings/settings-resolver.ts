@@ -95,55 +95,13 @@ export class SettingsResolver {
 	}
 
 	createMemoryFile(layer: "project" | "custom", agentConfigSubdir: string): boolean {
-		const filePath = this.getMemoryFilePath(layer, agentConfigSubdir);
-
-		if (layer === "custom") {
-			const resolved = path.resolve(this.pluginDir, agentConfigSubdir);
-			if (!resolved.startsWith(this.pluginDir)) {
-				console.warn("[Claude Agent] Path traversal blocked:", agentConfigSubdir);
-				return false;
-			}
-		}
-
-		try {
-			const dir = path.dirname(filePath);
-			if (!existsSync(dir)) {
-				mkdirSync(dir, { recursive: true });
-			}
-			if (!existsSync(filePath)) {
-				writeFileSync(filePath, "# CLAUDE.md\n\n", "utf-8");
-			}
-			return true;
-		} catch (err) {
-			console.warn("[Claude Agent] Failed to create memory file:", err);
-			return false;
-		}
+		if (!this.validateCustomSubdir(layer, agentConfigSubdir)) return false;
+		return this.ensureFileExists(this.getMemoryFilePath(layer, agentConfigSubdir), "# CLAUDE.md\n\n");
 	}
 
 	createConfigFile(layer: "project" | "custom", agentConfigSubdir: string): boolean {
-		const filePath = this.getLayerPath(layer, agentConfigSubdir);
-
-		if (layer === "custom") {
-			const resolved = path.resolve(this.pluginDir, agentConfigSubdir);
-			if (!resolved.startsWith(this.pluginDir)) {
-				console.warn("[Claude Agent] Path traversal blocked:", agentConfigSubdir);
-				return false;
-			}
-		}
-
-		try {
-			const dir = path.dirname(filePath);
-			if (!existsSync(dir)) {
-				mkdirSync(dir, { recursive: true });
-			}
-			if (!existsSync(filePath)) {
-				writeFileSync(filePath, JSON.stringify({}, null, 2), "utf-8");
-			}
-			return true;
-		} catch (err) {
-			console.warn("[Claude Agent] Failed to create config file:", err);
-			return false;
-		}
+		if (!this.validateCustomSubdir(layer, agentConfigSubdir)) return false;
+		return this.ensureFileExists(this.getLayerPath(layer, agentConfigSubdir), JSON.stringify({}, null, 2));
 	}
 
 	private getLayerPath(layer: "user" | "project" | "custom", agentConfigSubdir?: string): string {
@@ -176,16 +134,8 @@ export class SettingsResolver {
 
 	/** Write a JSON object to a layer file (project/custom only) */
 	writeLayerConfig(layer: "project" | "custom", data: Record<string, unknown>, agentConfigSubdir: string): boolean {
+		if (!this.validateCustomSubdir(layer, agentConfigSubdir)) return false;
 		const filePath = this.getLayerPath(layer, agentConfigSubdir);
-
-		if (layer === "custom") {
-			const resolved = path.resolve(this.pluginDir, agentConfigSubdir);
-			if (!resolved.startsWith(this.pluginDir)) {
-				console.warn("[Claude Agent] Path traversal blocked:", agentConfigSubdir);
-				return false;
-			}
-		}
-
 		try {
 			const dir = path.dirname(filePath);
 			if (!existsSync(dir)) {
@@ -195,6 +145,34 @@ export class SettingsResolver {
 			return true;
 		} catch (err) {
 			console.warn("[Claude Agent] Failed to write config file:", err);
+			return false;
+		}
+	}
+
+	/** Return false if the custom subdir escapes pluginDir (path traversal). */
+	private validateCustomSubdir(layer: string, agentConfigSubdir: string): boolean {
+		if (layer !== "custom") return true;
+		const resolved = path.resolve(this.pluginDir, agentConfigSubdir);
+		if (!resolved.startsWith(this.pluginDir)) {
+			console.warn("[Claude Agent] Path traversal blocked:", agentConfigSubdir);
+			return false;
+		}
+		return true;
+	}
+
+	/** Create a file with default content if it doesn't already exist. */
+	private ensureFileExists(filePath: string, defaultContent: string): boolean {
+		try {
+			const dir = path.dirname(filePath);
+			if (!existsSync(dir)) {
+				mkdirSync(dir, { recursive: true });
+			}
+			if (!existsSync(filePath)) {
+				writeFileSync(filePath, defaultContent, "utf-8");
+			}
+			return true;
+		} catch (err) {
+			console.warn("[Claude Agent] Failed to create file:", err);
 			return false;
 		}
 	}

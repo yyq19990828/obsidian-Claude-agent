@@ -1,5 +1,5 @@
 import type { ClaudeAgentSettings, ToolPermission, SdkToolToggles, ToolCall } from "../types";
-import { PERMISSION_FREE_TOOLS } from "../constants";
+import { PERMISSION_FREE_TOOLS, VAULT_TOOL_MCP_NAMES, MCP_VAULT_TOOL_PREFIX } from "../constants";
 
 const PERMISSION_FREE_SET = new Set(PERMISSION_FREE_TOOLS);
 
@@ -13,11 +13,7 @@ export function buildAllowedTools(settings: ClaudeAgentSettings): string[] {
 
 	/* Vault MCP tools: only "allow" gets auto-allowed */
 	const vaultPerms = settings.vaultToolPermissions;
-	const vaultToolMap: Record<string, string> = {
-		write_note: "mcp__obsidian-vault__write_note",
-		edit_note: "mcp__obsidian-vault__edit_note",
-	};
-	for (const [key, mcpName] of Object.entries(vaultToolMap)) {
+	for (const [key, mcpName] of Object.entries(VAULT_TOOL_MCP_NAMES)) {
 		const perm = (vaultPerms as unknown as Record<string, ToolPermission>)[key] ?? "ask";
 		if (perm === "allow") {
 			allowed.push(mcpName);
@@ -45,11 +41,7 @@ export function buildDisallowedTools(settings: ClaudeAgentSettings): string[] {
 
 	/* Vault MCP tools: hide "deny" tools from the model entirely */
 	const vaultPerms = settings.vaultToolPermissions;
-	const vaultToolMap: Record<string, string> = {
-		write_note: "mcp__obsidian-vault__write_note",
-		edit_note: "mcp__obsidian-vault__edit_note",
-	};
-	for (const [key, mcpName] of Object.entries(vaultToolMap)) {
+	for (const [key, mcpName] of Object.entries(VAULT_TOOL_MCP_NAMES)) {
 		const perm = (vaultPerms as unknown as Record<string, ToolPermission>)[key] ?? "ask";
 		if (perm === "deny") {
 			disallowed.push(mcpName);
@@ -103,10 +95,27 @@ export function buildPermissionMode(settings: ClaudeAgentSettings): "default" | 
 	}
 }
 
+/** Extract file path from tool input, checking common property names. */
+export function extractFilePath(input: Record<string, unknown>): string | undefined {
+	if (typeof input.file_path === "string") return input.file_path;
+	if (typeof input.path === "string") return input.path;
+	return undefined;
+}
+
 /** Build an "allow" result. `updatedInput` is required by CLI Zod schema
  *  and replaces the tool's input, so we must pass the original input through. */
 function allowResult(input: Record<string, unknown>) {
 	return { behavior: "allow" as const, updatedInput: input };
+}
+
+function buildPendingToolCall(toolName: string, input: Record<string, unknown>): ToolCall {
+	return {
+		id: crypto.randomUUID(),
+		toolName,
+		input,
+		status: "pending",
+		filePath: extractFilePath(input),
+	};
 }
 
 export function buildCanUseToolCallback(
@@ -130,25 +139,17 @@ export function buildCanUseToolCallback(
 	const isConfirmMode = settings.permissionMode === "confirm";
 
 	return async (toolName: string, input: Record<string, unknown>, _options?: Record<string, unknown>) => {
-		console.log(`[claude-agent] canUseTool called: ${toolName}, isConfirm=${isConfirmMode}, askTools=[${[...askSdkTools]}], allowTools=[${[...allowSdkTools]}]`);
 		/* Permission-free tools (read-only / informational) → always allow */
 		if (PERMISSION_FREE_SET.has(toolName)) {
 			return allowResult(input);
 		}
 		/* MCP vault tools are handled by their own permission layer */
-		if (toolName.startsWith("mcp__")) {
+		if (toolName.startsWith(MCP_VAULT_TOOL_PREFIX)) {
 			return allowResult(input);
 		}
 		/* "ask" SDK tools → always prompt the user */
 		if (askSdkTools.has(toolName)) {
-			const toolCall: ToolCall = {
-				id: crypto.randomUUID(),
-				toolName,
-				input,
-				status: "pending",
-				filePath: typeof input.file_path === "string" ? input.file_path : (typeof input.path === "string" ? input.path : undefined),
-			};
-			const approved = await requestToolApproval(toolCall);
+			const approved = await requestToolApproval(buildPendingToolCall(toolName, input));
 			return approved
 				? allowResult(input)
 				: { behavior: "deny" as const, message: "User rejected tool call" };
@@ -160,14 +161,7 @@ export function buildCanUseToolCallback(
 		/* Fallback: confirm mode → prompt user for unconfigured tools;
 		   otherwise (auto_approve / safe mode) → allow */
 		if (isConfirmMode) {
-			const toolCall: ToolCall = {
-				id: crypto.randomUUID(),
-				toolName,
-				input,
-				status: "pending",
-				filePath: typeof input.file_path === "string" ? input.file_path : (typeof input.path === "string" ? input.path : undefined),
-			};
-			const approved = await requestToolApproval(toolCall);
+			const approved = await requestToolApproval(buildPendingToolCall(toolName, input));
 			return approved
 				? allowResult(input)
 				: { behavior: "deny" as const, message: "User rejected tool call" };

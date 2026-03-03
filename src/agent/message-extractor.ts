@@ -1,5 +1,6 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ToolCall } from "../types";
+import { extractFilePath } from "./tool-permission";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
@@ -46,7 +47,7 @@ export function extractToolCalls(message: SDKMessage): ToolCall[] {
 			toolName,
 			input,
 			status: "pending",
-			filePath: typeof input.path === "string" ? input.path : (typeof input.file_path === "string" ? input.file_path : undefined),
+			filePath: extractFilePath(input),
 		});
 	}
 	return calls;
@@ -101,34 +102,20 @@ export function extractToolResults(message: SDKMessage): Map<string, string> {
 	return results;
 }
 
-export function extractTextDelta(message: SDKMessage): string | null {
-	if (message.type !== "stream_event") {
-		return null;
-	}
-
+function extractDelta(message: SDKMessage, deltaType: string, property: string): string | null {
+	if (message.type !== "stream_event") return null;
 	const event = message.event as unknown;
-	if (!isRecord(event)) {
-		return null;
-	}
-
-	if (event.type === "content_block_delta" && isRecord(event.delta) && event.delta.type === "text_delta" && typeof event.delta.text === "string") {
-		return event.delta.text;
+	if (!isRecord(event)) return null;
+	if (event.type === "content_block_delta" && isRecord(event.delta) && event.delta.type === deltaType && typeof event.delta[property] === "string") {
+		return event.delta[property] as string;
 	}
 	return null;
 }
 
+export function extractTextDelta(message: SDKMessage): string | null {
+	return extractDelta(message, "text_delta", "text");
+}
+
 export function extractThinkingDelta(message: SDKMessage): string | null {
-	if (message.type !== "stream_event") {
-		return null;
-	}
-
-	const event = message.event as unknown;
-	if (!isRecord(event)) {
-		return null;
-	}
-
-	if (event.type === "content_block_delta" && isRecord(event.delta) && event.delta.type === "thinking_delta" && typeof event.delta.thinking === "string") {
-		return event.delta.thinking;
-	}
-	return null;
+	return extractDelta(message, "thinking_delta", "thinking");
 }

@@ -31,6 +31,8 @@ export class MessageList {
 	private activeTabId: string | null = null;
 	/** Tabs currently receiving streaming tokens. */
 	private streamingTabs = new Set<string>();
+	/** Throttle timer for scrollToBottom during streaming. */
+	private scrollThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 	/** Welcome screen shown when no tabs exist. */
 	private welcomeEl: HTMLElement | null = null;
 
@@ -158,7 +160,7 @@ export class MessageList {
 		const bubble = this.tabBubbles.get(targetTab);
 		if (!bubble) return;
 		this.renderer.appendAssistantToken(bubble, token);
-		if (targetTab === this.activeTabId) this.scrollToBottom();
+		if (targetTab === this.activeTabId) this.scrollToBottomThrottled();
 	}
 
 	async finishAssistantMessage(content: string, toolCalls: ToolCall[] = [], tabId?: string): Promise<void> {
@@ -189,7 +191,7 @@ export class MessageList {
 		const bubble = this.tabBubbles.get(targetTab);
 		if (!bubble) return;
 		this.renderer.appendThinkingToken(bubble, token);
-		if (targetTab === this.activeTabId) this.scrollToBottom();
+		if (targetTab === this.activeTabId) this.scrollToBottomThrottled();
 	}
 
 	finishThinking(tabId?: string): void {
@@ -253,7 +255,17 @@ export class MessageList {
 		if (container) container.scrollTop = container.scrollHeight;
 	}
 
+	/** Throttled version of scrollToBottom — max once per 100ms during streaming. */
+	private scrollToBottomThrottled(): void {
+		if (this.scrollThrottleTimer) return;
+		this.scrollToBottom();
+		this.scrollThrottleTimer = setTimeout(() => {
+			this.scrollThrottleTimer = null;
+		}, 100);
+	}
+
 	destroy(): void {
+		if (this.scrollThrottleTimer) clearTimeout(this.scrollThrottleTimer);
 		this.wrapperEl.remove();
 		this.tabContainers.clear();
 		this.tabBubbles.clear();

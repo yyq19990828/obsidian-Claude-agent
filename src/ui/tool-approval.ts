@@ -1,5 +1,6 @@
 import { setIcon } from "obsidian";
 import type { ToolCall } from "../types";
+import { getToolIcon } from "./components/tool-call-card";
 
 export class ToolApprovalUI {
 	constructor(private defaultContainerEl: HTMLElement) {}
@@ -12,7 +13,7 @@ export class ToolApprovalUI {
 			/* ── Header: icon + tool name ── */
 			const header = card.createDiv({ cls: "claude-agent-approval-header" });
 			const iconEl = header.createSpan({ cls: "claude-agent-approval-icon" });
-			setIcon(iconEl, this.getToolIcon(toolCall.toolName));
+			setIcon(iconEl, getToolIcon(toolCall.toolName));
 			header.createSpan({ cls: "claude-agent-approval-tool-name", text: toolCall.toolName });
 
 			/* ── File path (if present) ── */
@@ -100,17 +101,5 @@ export class ToolApprovalUI {
 			rejectBtn.createSpan({ text: "Reject" });
 			rejectBtn.addEventListener("click", () => finish(false));
 		});
-	}
-
-	private getToolIcon(toolName: string): string {
-		const lower = toolName.toLowerCase();
-		if (lower.includes("read")) return "file-text";
-		if (lower.includes("write")) return "file-plus";
-		if (lower.includes("edit")) return "file-edit";
-		if (lower.includes("bash")) return "terminal";
-		if (lower.includes("glob")) return "search";
-		if (lower.includes("grep")) return "search";
-		if (lower.includes("web")) return "globe";
-		return "wrench";
 	}
 }

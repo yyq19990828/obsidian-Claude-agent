@@ -26,6 +26,7 @@ export class ConversationSidebar {
 	private listEl: HTMLElement;
 	private searchInput: HTMLInputElement;
 	private filterText = "";
+	private cleanupFns: (() => void)[] = [];
 
 	constructor(
 		parentEl: HTMLElement,
@@ -59,16 +60,28 @@ export class ConversationSidebar {
 		/* List */
 		this.listEl = this.containerEl.createDiv({ cls: "claude-agent-sidebar-list" });
 
-		/* Listen for changes */
-		this.eventBus.on("tab:created", () => this.render());
-		this.eventBus.on("tab:closed", () => this.render());
-		this.eventBus.on("tab:title-changed", () => this.render());
-		this.eventBus.on("tab:status-changed", ({ tabId, status }) => {
+		/* Listen for changes (store refs for cleanup) */
+		const onCreated = () => this.render();
+		const onClosed = () => this.render();
+		const onTitleChanged = () => this.render();
+		const onStatusChanged = ({ tabId, status }: { tabId: string; status: TabStatus }) => {
 			this.updateItemStatus(tabId, status);
-		});
-		this.eventBus.on("sidebar:toggle", (visible) => {
+		};
+		const onSidebarToggle = (visible: boolean) => {
 			this.containerEl.classList.toggle("is-visible", visible);
-		});
+		};
+		this.eventBus.on("tab:created", onCreated);
+		this.eventBus.on("tab:closed", onClosed);
+		this.eventBus.on("tab:title-changed", onTitleChanged);
+		this.eventBus.on("tab:status-changed", onStatusChanged);
+		this.eventBus.on("sidebar:toggle", onSidebarToggle);
+		this.cleanupFns.push(
+			() => this.eventBus.off("tab:created", onCreated),
+			() => this.eventBus.off("tab:closed", onClosed),
+			() => this.eventBus.off("tab:title-changed", onTitleChanged),
+			() => this.eventBus.off("tab:status-changed", onStatusChanged),
+			() => this.eventBus.off("sidebar:toggle", onSidebarToggle),
+		);
 	}
 
 	render(): void {
@@ -162,6 +175,8 @@ export class ConversationSidebar {
 	}
 
 	destroy(): void {
+		for (const cleanup of this.cleanupFns) cleanup();
+		this.cleanupFns = [];
 		this.containerEl.remove();
 	}
 }
